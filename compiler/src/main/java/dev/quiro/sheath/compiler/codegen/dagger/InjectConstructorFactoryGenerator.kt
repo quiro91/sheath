@@ -4,11 +4,10 @@ import dev.quiro.sheath.compiler.codegen.CodeGenerator
 import dev.quiro.sheath.compiler.codegen.CodeGenerator.GeneratedFile
 import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
 import dev.quiro.sheath.compiler.codegen.asArgumentList
-import dev.quiro.sheath.compiler.codegen.asTypeName
+import dev.quiro.sheath.compiler.codegen.asClassName
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.mapToParameter
-import dev.quiro.sheath.compiler.codegen.replaceImports
 import dev.quiro.sheath.compiler.codegen.writeToString
 import dev.quiro.sheath.compiler.generateClassName
 import dev.quiro.sheath.compiler.injectFqName
@@ -30,23 +29,23 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.allConstructors
 import java.io.File
 
-internal class InjectConstructorFactoryGenerator : CodeGenerator {
-  override fun generateCode(
+internal class InjectConstructorFactoryGenerator : PrivateCodeGenerator() {
+
+  override fun generateCodePrivate(
     codeGenDir: File,
     module: ModuleDescriptor,
     projectFiles: Collection<KtFile>
-  ): Collection<GeneratedFile> {
-    return projectFiles
+  ) {
+    projectFiles
         .asSequence()
         .flatMap { it.classesAndInnerClasses() }
-        .mapNotNull { clazz ->
+        .forEach { clazz ->
           clazz.allConstructors
               .singleOrNull { it.hasAnnotation(injectFqName) }
               ?.let {
                 generateFactoryClass(codeGenDir, module, clazz, it)
               }
         }
-        .toList()
   }
 
   @OptIn(ExperimentalStdlibApi::class)
@@ -58,7 +57,7 @@ internal class InjectConstructorFactoryGenerator : CodeGenerator {
   ): GeneratedFile {
     val packageName = clazz.containingKtFile.packageFqName.asString()
     val className = "${clazz.generateClassName()}_Factory"
-    val classType = clazz.asTypeName()
+    val classType = clazz.asClassName()
 
     val parameters = constructor.getValueParameters().mapToParameter(module)
 
@@ -168,7 +167,6 @@ internal class InjectConstructorFactoryGenerator : CodeGenerator {
         }
         .build()
         .writeToString()
-        .replaceImports(clazz)
         .addGeneratedByComment()
 
     val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))

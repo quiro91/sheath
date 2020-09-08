@@ -10,12 +10,13 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import java.io.File
 
-internal class ComponentDetectorCheck : CodeGenerator {
-  override fun generateCode(
+internal class ComponentDetectorCheck : PrivateCodeGenerator() {
+
+  override fun generateCodePrivate(
     codeGenDir: File,
     module: ModuleDescriptor,
     projectFiles: Collection<KtFile>
-  ): Collection<GeneratedFile> {
+  ) {
     val component = projectFiles
         .asSequence()
         .flatMap { it.classesAndInnerClasses() }
@@ -30,7 +31,5 @@ internal class ComponentDetectorCheck : CodeGenerator {
           element = component
       )
     }
-
-    return emptyList()
   }
 }

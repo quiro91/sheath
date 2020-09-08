@@ -3,12 +3,11 @@ package dev.quiro.sheath.compiler.codegen.dagger
 import dev.quiro.sheath.compiler.codegen.CodeGenerator
 import dev.quiro.sheath.compiler.codegen.CodeGenerator.GeneratedFile
 import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
-import dev.quiro.sheath.compiler.codegen.asTypeName
+import dev.quiro.sheath.compiler.codegen.asClassName
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.isGenericClass
 import dev.quiro.sheath.compiler.codegen.mapToParameter
-import dev.quiro.sheath.compiler.codegen.replaceImports
 import dev.quiro.sheath.compiler.codegen.requireFqName
 import dev.quiro.sheath.compiler.codegen.writeToString
 import dev.quiro.sheath.compiler.daggerDoubleCheckFqNameString
@@ -38,16 +37,17 @@ import org.jetbrains.kotlin.psi.psiUtil.visibilityModifierTypeOrDefault
 import java.io.File
 import java.util.Locale.US
 
-internal class MembersInjectorGenerator : CodeGenerator {
-  override fun generateCode(
+internal class MembersInjectorGenerator : PrivateCodeGenerator() {
+
+  override fun generateCodePrivate(
     codeGenDir: File,
     module: ModuleDescriptor,
     projectFiles: Collection<KtFile>
-  ): Collection<GeneratedFile> {
-    return projectFiles
+  ) {
+    projectFiles
         .asSequence()
         .flatMap { it.classesAndInnerClasses() }
-        .mapNotNull { clazz ->
+        .forEach { clazz ->
           val injectProperties = clazz.children
               .asSequence()
               .filterIsInstance<KtClassBody>()
@@ -55,11 +55,10 @@ internal class MembersInjectorGenerator : CodeGenerator {
               .filterNot { it.visibilityModifierTypeOrDefault() == KtTokens.PRIVATE_KEYWORD }
               .filter { it.hasAnnotation(injectFqName) }
               .toList()
-              .ifEmpty { return@mapNotNull null }
+              .ifEmpty { return@forEach }
 
           generateMembersInjectorClass(codeGenDir, module, clazz, injectProperties)
         }
-        .toList()
   }
 
   @OptIn(ExperimentalStdlibApi::class)
@@ -71,12 +70,10 @@ internal class MembersInjectorGenerator : CodeGenerator {
   ): GeneratedFile {
     val packageName = clazz.containingKtFile.packageFqName.asString()
     val className = "${clazz.generateClassName()}_MembersInjector"
-    val classType = clazz.asTypeName()
+    val classType = clazz.asClassName()
         .let {
-          if (it is ClassName && clazz.isGenericClass()) {
-            val numberOfStars = clazz.typeParameterList!!.parameters.size
-            val stars = Array(numberOfStars) { STAR }
-            it.parameterizedBy(*stars)
+          if (clazz.isGenericClass()) {
+            it.parameterizedBy(List(size = clazz.typeParameters.size) { STAR })
           } else {
             it
           }
@@ -188,7 +185,6 @@ internal class MembersInjectorGenerator : CodeGenerator {
         )
         .build()
         .writeToString()
-        .replaceImports(clazz)
         .addGeneratedByComment()
 
     val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))

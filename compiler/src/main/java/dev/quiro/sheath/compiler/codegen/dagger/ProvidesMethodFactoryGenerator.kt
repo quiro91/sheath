@@ -1,18 +1,19 @@
 package dev.quiro.sheath.compiler.codegen.dagger
 
-import dev.quiro.sheath.compiler.codegen.CodeGenerator
+import com.squareup.anvil.compiler.AnvilCompilationException
 import dev.quiro.sheath.compiler.codegen.CodeGenerator.GeneratedFile
+import dev.quiro.sheath.compiler.codegen.PrivateCodeGenerator
 import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
 import dev.quiro.sheath.compiler.codegen.asArgumentList
-import dev.quiro.sheath.compiler.codegen.asTypeName
+import dev.quiro.sheath.compiler.codegen.asClassName
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.functions
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.isNullable
 import dev.quiro.sheath.compiler.codegen.mapToParameter
-import dev.quiro.sheath.compiler.codegen.replaceImports
 import dev.quiro.sheath.compiler.codegen.requireFqName
 import dev.quiro.sheath.compiler.codegen.requireTypeName
+import dev.quiro.sheath.compiler.codegen.requireTypeReference
 import dev.quiro.sheath.compiler.codegen.withJvmSuppressWildcardsIfNeeded
 import dev.quiro.sheath.compiler.codegen.writeToString
 import dev.quiro.sheath.compiler.daggerModuleFqName
@@ -39,26 +40,40 @@ import org.jetbrains.kotlin.psi.psiUtil.parents
 import java.io.File
 import java.util.Locale.US
 
-internal class ProvidesMethodFactoryGenerator : CodeGenerator {
-  override fun generateCode(
+internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
+
+  override fun generateCodePrivate(
     codeGenDir: File,
     module: ModuleDescriptor,
     projectFiles: Collection<KtFile>
-  ): Collection<GeneratedFile> {
-    return projectFiles
+  ) {
+    projectFiles
         .asSequence()
         .flatMap { it.classesAndInnerClasses() }
         .filter { it.hasAnnotation(daggerModuleFqName) }
-        .flatMap { clazz ->
+        .forEach { clazz ->
           clazz
               .functions(includeCompanionObjects = true)
               .asSequence()
               .filter { it.hasAnnotation(daggerProvidesFqName) }
-              .map { function ->
+              .also { functions ->
+                // Check for duplicate function names.
+                val duplicateFunctions = functions
+                    .groupBy { it.requireFqName() }
+                    .filterValues { it.size > 1 }
+
+                if (duplicateFunctions.isNotEmpty()) {
+                  throw AnvilCompilationException(
+                      element = clazz,
+                      message = "Cannot have more than one binding method with the same name in " +
+                          "a single module: ${duplicateFunctions.keys.joinToString()}"
+                  )
+                }
+              }
+              .forEach { function ->
                 generateFactoryClass(codeGenDir, module, clazz, function)
               }
         }
-        .toList()
   }
 
   @OptIn(ExperimentalStdlibApi::class)
@@ -83,18 +98,12 @@ internal class ProvidesMethodFactoryGenerator : CodeGenerator {
 
     val parameters = function.valueParameters.mapToParameter(module)
 
-    // This is a little hacky. The typeElement could be "String", "Abc", etc., but also a generic
-    // type like "List<String>". We simply copy this literal as return type into our generated
-    // code. Kotlinpoet will add an import for this literal like "import String", which we later
-    // will remove again.
-    //
-    // This solution is a lot easier than trying to resolve all FqNames for each type.
-    val returnType = function.requireTypeName(module)
+    val returnType = function.requireTypeReference().requireTypeName(module)
         .withJvmSuppressWildcardsIfNeeded(function)
     val returnTypeIsNullable = function.typeReference?.isNullable() ?: false
 
     val factoryClass = ClassName(packageName, className)
-    val moduleClass = clazz.asTypeName()
+    val moduleClass = clazz.asClassName()
 
     val content = FileSpec.builder(packageName, className)
         .apply {
@@ -239,7 +248,6 @@ internal class ProvidesMethodFactoryGenerator : CodeGenerator {
         }
         .build()
         .writeToString()
-        .replaceImports(clazz)
         .addGeneratedByComment()
 
     val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))

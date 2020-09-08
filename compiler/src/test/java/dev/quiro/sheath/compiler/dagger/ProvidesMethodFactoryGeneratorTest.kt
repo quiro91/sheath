@@ -1,10 +1,12 @@
 package dev.quiro.sheath.compiler.dagger
 
 import com.google.common.truth.Truth.assertThat
+import com.squareup.anvil.compiler.componentInterfaceAnvilModule
 import dev.quiro.sheath.compiler.daggerModule1
 import dev.quiro.sheath.compiler.innerModule
 import dev.quiro.sheath.compiler.isStatic
 import dev.quiro.sheath.compiler.moduleFactoryClass
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode.COMPILATION_ERROR
 import com.tschuchort.compiletesting.KotlinCompilation.Result
 import dagger.Lazy
 import dagger.internal.Factory
@@ -241,7 +243,8 @@ public final class DaggerModule1_ProvideStringFactory implements Factory<String>
     }
   }
 
-  @Test fun `a factory class is generated for a provider method with imports and fully qualified return type`() { // ktlint-disable max-line-length
+  @Test
+  fun `a factory class is generated for a provider method with imports and fully qualified return type`() { // ktlint-disable max-line-length
     /*
 package com.squareup.test;
 
@@ -1176,7 +1179,8 @@ public final class DaggerModule1_ProvideStringFactory implements Factory<String>
     }
   }
 
-  @Test fun `a factory class is generated for a provider method with parameters in a companion object`() { // ktlint-disable max-line-length
+  @Test
+  fun `a factory class is generated for a provider method with parameters in a companion object`() {
     /*
 package com.squareup.test;
 
@@ -1408,7 +1412,8 @@ public final class DaggerModule1_ProvideStringFactory implements Factory<String>
     }
   }
 
-  @Test fun `a factory class is generated for a nullable provider method with nullable parameters`() { // ktlint-disable max-line-length
+  @Test
+  fun `a factory class is generated for a nullable provider method with nullable parameters`() {
     /*
 package com.squareup.test;
 
@@ -1651,6 +1656,28 @@ public final class ComponentInterface_InnerModule_ProvideStringFactory implement
 
       assertThat(providedString).isEqualTo("abc")
       assertThat((factoryInstance as Factory<String>).get()).isEqualTo("abc")
+    }
+  }
+
+  @Test fun `a factory class is generated for a provider method returning an inner class`() {
+    compile(
+        """
+        package com.squareup.test
+        
+        import dagger.Module
+        import dagger.Provides
+        import com.squareup.anvil.compiler.dagger.OuterClass
+        
+        @Module
+        object DaggerModule1 {
+          @Provides fun provideInnerClass(): OuterClass.InnerClass = OuterClass.InnerClass()
+        }
+        """
+    ) {
+      val factoryClass = daggerModule1.moduleFactoryClass("provideInnerClass")
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).isEmpty()
     }
   }
 
@@ -1946,7 +1973,8 @@ public final class DaggerModule1_ProvideFunctionFactory implements Factory<Funct
     }
   }
 
-  @Test fun `a factory class is generated for a multibindings provided function with a typealias`() { // ktlint-disable max-line-length
+  @Test
+  fun `a factory class is generated for a multibindings provided function with a typealias`() {
     /*
 package com.squareup.test;
 
@@ -2025,6 +2053,176 @@ public final class DaggerModule1_ProvideFunctionFactory implements Factory<Set<F
 
       assertThat(providedStringSet.single().invoke(emptyList())).containsExactly("abc")
       assertThat(factoryInstance.get().single().invoke(emptyList())).containsExactly("abc")
+    }
+  }
+
+  @Test fun `a factory class is generated when Anvil generates the provider method`() {
+    /*
+package anvil.module.com.squareup.test;
+
+import com.squareup.test.ParentInterface;
+import dagger.internal.Factory;
+import dagger.internal.Preconditions;
+import javax.annotation.Generated;
+
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes"
+})
+public final class ComponentInterfaceAnvilModule_ProvideComSquareupTestContributingObjectFactory implements Factory<ParentInterface> {
+  @Override
+  public ParentInterface get() {
+    return provideComSquareupTestContributingObject();
+  }
+
+  public static ComponentInterfaceAnvilModule_ProvideComSquareupTestContributingObjectFactory create(
+      ) {
+    return InstanceHolder.INSTANCE;
+  }
+
+  public static ParentInterface provideComSquareupTestContributingObject() {
+    return Preconditions.checkNotNull(ComponentInterfaceAnvilModule.INSTANCE.provideComSquareupTestContributingObject(), "Cannot return null from a non-@Nullable @Provides method");
+  }
+
+  private static final class InstanceHolder {
+    private static final ComponentInterfaceAnvilModule_ProvideComSquareupTestContributingObjectFactory INSTANCE = new ComponentInterfaceAnvilModule_ProvideComSquareupTestContributingObjectFactory();
+  }
+}
+     */
+
+    /*
+package com.squareup.test;
+
+import anvil.module.com.squareup.test.ComponentInterfaceAnvilModule;
+import dagger.internal.Preconditions;
+import javax.annotation.Generated;
+
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes"
+})
+public final class DaggerComponentInterface implements ComponentInterface {
+  private DaggerComponentInterface() {
+
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static ComponentInterface create() {
+    return new Builder().build();
+  }
+
+  public static final class Builder {
+    private Builder() {
+    }
+
+    /**
+     * @deprecated This module is declared, but an instance is not used in the component. This method is a no-op. For more, see https://dagger.dev/unused-modules.
+     */
+    @Deprecated
+    public Builder componentInterfaceAnvilModule(
+        ComponentInterfaceAnvilModule componentInterfaceAnvilModule) {
+      Preconditions.checkNotNull(componentInterfaceAnvilModule);
+      return this;
+    }
+
+    public ComponentInterface build() {
+      return new DaggerComponentInterface();
+    }
+  }
+}
+     */
+
+    compile(
+        """
+        package com.squareup.test
+        
+        import com.squareup.anvil.annotations.ContributesBinding
+        import com.squareup.anvil.annotations.MergeComponent
+        
+        interface ParentInterface
+        
+        @ContributesBinding(Any::class)
+        object ContributingObject : ParentInterface
+        
+        @MergeComponent(Any::class)
+        interface ComponentInterface
+        """
+    ) {
+      val factoryClass = componentInterfaceAnvilModule
+          .moduleFactoryClass("provideComSquareupTestContributingObject")
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).isEmpty()
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+          .invoke(null) as Factory<Any>
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val providedContributingObject = staticMethods
+          .single { it.name == "provideComSquareupTestContributingObject" }
+          .invoke(null)
+
+      assertThat(providedContributingObject).isSameInstanceAs(factoryInstance.get())
+    }
+  }
+
+  @Test fun `an error is thrown for overloaded provider methods`() {
+    compile(
+        """
+        package com.squareup.test
+        
+        import dagger.Module
+        import dagger.Provides
+        import dagger.multibindings.ElementsIntoSet
+        
+        typealias StringList = List<String>
+        
+        @Module
+        object DaggerModule1 {
+            @Provides fun provideString(): String = ""
+            @Provides fun provideString(s: String): Int = 1
+        }
+        """
+    ) {
+      assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
+      assertThat(messages).contains(
+          "Cannot have more than one binding method with the same name in a single module"
+      )
+    }
+  }
+
+  @Test
+  fun `a factory class is generated for a method returning a java class with a star import`() {
+    compile(
+        """
+        package com.squareup.test
+        
+        import dagger.Module
+        import dagger.Provides
+        
+        @Module
+        object DaggerModule1 {
+          @Provides fun provideClass(): Class<*> = java.lang.Runnable::class.java
+        }
+        """
+    ) {
+      val factoryClass = daggerModule1.moduleFactoryClass("provideClass")
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).isEmpty()
     }
   }
 
