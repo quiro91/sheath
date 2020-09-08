@@ -1,13 +1,11 @@
 package dev.quiro.sheath.compiler.codegen.dagger
 
 import dev.quiro.sheath.compiler.codegen.CodeGenerator
-import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.findAnnotation
 import dev.quiro.sheath.compiler.codegen.fqNameOrNull
 import dev.quiro.sheath.compiler.codegen.functions
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
-import dev.quiro.sheath.compiler.codegen.replaceImports
 import dev.quiro.sheath.compiler.codegen.requireTypeName
 import dev.quiro.sheath.compiler.codegen.withJvmSuppressWildcardsIfNeeded
 import dev.quiro.sheath.compiler.codegen.writeToString
@@ -30,6 +28,8 @@ import dagger.Subcomponent
 import dagger.android.AndroidInjector
 import dagger.multibindings.ClassKey
 import dagger.multibindings.IntoMap
+import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
+import dev.quiro.sheath.compiler.codegen.requireTypeReference
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -67,7 +67,7 @@ internal class ContributesAndroidInjectorGenerator : CodeGenerator {
     function: KtNamedFunction
   ): CodeGenerator.GeneratedFile {
     val packageName = clazz.containingKtFile.packageFqName.asString()
-    val bindingTarget = function.requireTypeName(module)
+    val bindingTarget = function.requireTypeReference().requireTypeName(module)
       .withJvmSuppressWildcardsIfNeeded(function)
     val bindingTargetName = (bindingTarget as ClassName).simpleName
     val className = "${clazz.generateClassName()}_Bind$bindingTargetName"
@@ -153,7 +153,6 @@ internal class ContributesAndroidInjectorGenerator : CodeGenerator {
       }
       .build()
       .writeToString()
-      .replaceImports(clazz)
       .addGeneratedByComment()
 
     val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))

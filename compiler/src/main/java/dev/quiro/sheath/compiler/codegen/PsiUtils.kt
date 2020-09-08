@@ -5,11 +5,15 @@ import dev.quiro.sheath.compiler.getAllSuperTypes
 import dev.quiro.sheath.compiler.jvmSuppressWildcardsFqName
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.descriptors.findTypeAliasAcrossModuleDependencies
 import org.jetbrains.kotlin.descriptors.resolveClassByFqName
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation.FROM_BACKEND
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassLiteralExpression
@@ -99,64 +103,6 @@ internal fun KtAnnotated.findAnnotation(fqName: FqName): KtAnnotationEntry? {
   return null
 }
 
-internal fun KtClassOrObject.scope(
-  annotationFqName: FqName,
-  module: ModuleDescriptor
-): FqName {
-  return findScopeClassLiteralExpression(annotationFqName)
-      .let {
-        val children = it.children
-        children.singleOrNull() ?: throw SheathCompilationException(
-            "Expected a single child, but had ${children.size} instead: ${it.text}",
-            element = this
-        )
-      }
-      .requireFqName(module)
-}
-
-private fun KtClassOrObject.findScopeClassLiteralExpression(
-  annotationFqName: FqName
-): KtClassLiteralExpression {
-  val annotationEntry = findAnnotation(annotationFqName)
-      ?: throw SheathCompilationException(
-          "Couldn't find $annotationFqName for Psi element: $text",
-          element = this
-      )
-
-  val annotationValues = annotationEntry.valueArguments
-      .asSequence()
-      .filterIsInstance<KtValueArgument>()
-
-  // First check if the is any named parameter. Named parameters allow a different order of
-  // arguments.
-  annotationValues
-      .mapNotNull { valueArgument ->
-        val children = valueArgument.children
-        if (children.size == 2 && children[0] is KtValueArgumentName &&
-            (children[0] as KtValueArgumentName).asName.asString() == "scope" &&
-            children[1] is KtClassLiteralExpression
-        ) {
-          children[1] as KtClassLiteralExpression
-        } else {
-          null
-        }
-      }
-      .firstOrNull()
-      ?.let { return it }
-
-  // If there is no named argument, then take the first argument, which must be a class literal
-  // expression, e.g. @ContributesTo(Unit::class)
-  return annotationValues
-      .firstOrNull()
-      ?.let { valueArgument ->
-        valueArgument.children.firstOrNull() as? KtClassLiteralExpression
-      }
-      ?: throw SheathCompilationException(
-          "The first argument for $annotationFqName must be a class literal: $text",
-          element = this
-      )
-}
-
 internal fun PsiElement.fqNameOrNull(
   module: ModuleDescriptor
 ): FqName? {
@@ -191,6 +137,14 @@ internal fun PsiElement.requireFqName(
       if (isGenericType) {
         referencedName ?: failTypeHandling()
       } else {
+        val text = text
+
+        // Sometimes a KtUserType is a fully qualified name. Give it a try and return early.
+        if (text.contains(".") && text[0].isLowerCase()) {
+          module
+            .resolveClassByFqName(FqName(text), FROM_BACKEND)
+            ?.let { return it.fqNameSafe }
+        }
         // We can't use referencedName here. For inner classes like "Outer.Inner" it would only
         // return "Inner", whereas text returns "Outer.Inner", what we expect.
         text
@@ -232,6 +186,13 @@ internal fun PsiElement.requireFqName(
       )
       ?.let { return it.fqNameSafe }
 
+  // Maybe it's a type alias?
+  module
+    .findTypeAliasAcrossModuleDependencies(
+      ClassId(containingKtFile.packageFqName, Name.identifier(classReference))
+    )
+    ?.let { return it.fqNameSafe }
+
   // If this doesn't work, then maybe a class from the Kotlin package is used.
   module.resolveClassByFqName(FqName("kotlin.$classReference"), FROM_BACKEND)
       ?.let { return it.fqNameSafe }
@@ -242,6 +203,26 @@ internal fun PsiElement.requireFqName(
 
   findFqNameInSuperTypes(module, classReference)
       ?.let { return it }
+
+  containingKtFile.importDirectives
+    .asSequence()
+    .filter { it.isAllUnder }
+    .mapNotNull {
+      // This fqName is the everything in front of the star, e.g. for "import java.io.*" it
+      // returns "java.io".
+      it.importPath?.fqName
+    }
+    .forEach { importFqName ->
+      module
+        .resolveClassByFqName(FqName("$importFqName.$classReference"), FROM_BACKEND)
+        ?.let { return it.fqNameSafe }
+
+      module
+        .findTypeAliasAcrossModuleDependencies(
+          ClassId(importFqName, Name.identifier(classReference))
+        )
+        ?.let { return it.fqNameSafe }
+    }
 
   // Everything else isn't supported.
   throw SheathCompilationException(
@@ -301,3 +282,8 @@ fun KtTypeReference.isGenericType(): Boolean {
 fun KtTypeReference.isFunctionType(): Boolean = typeElement is KtFunctionType
 
 fun KtClassOrObject.isGenericClass(): Boolean = typeParameterList != null
+
+fun KtCallableDeclaration.requireTypeReference(): KtTypeReference =
+  typeReference ?: throw SheathCompilationException(
+    "Couldn't obtain type reference.", element = this
+  )

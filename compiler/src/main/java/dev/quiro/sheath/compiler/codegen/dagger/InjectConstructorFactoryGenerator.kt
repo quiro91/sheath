@@ -8,7 +8,6 @@ import dev.quiro.sheath.compiler.codegen.asTypeName
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.mapToParameter
-import dev.quiro.sheath.compiler.codegen.replaceImports
 import dev.quiro.sheath.compiler.codegen.writeToString
 import dev.quiro.sheath.compiler.generateClassName
 import dev.quiro.sheath.compiler.injectFqName
@@ -168,7 +167,6 @@ internal class InjectConstructorFactoryGenerator : CodeGenerator {
         }
         .build()
         .writeToString()
-        .replaceImports(clazz)
         .addGeneratedByComment()
 
     val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))

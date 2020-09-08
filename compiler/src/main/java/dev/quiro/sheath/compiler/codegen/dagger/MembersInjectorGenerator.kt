@@ -8,7 +8,6 @@ import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.isGenericClass
 import dev.quiro.sheath.compiler.codegen.mapToParameter
-import dev.quiro.sheath.compiler.codegen.replaceImports
 import dev.quiro.sheath.compiler.codegen.requireFqName
 import dev.quiro.sheath.compiler.codegen.writeToString
 import dev.quiro.sheath.compiler.daggerDoubleCheckFqNameString
@@ -188,7 +187,6 @@ internal class MembersInjectorGenerator : CodeGenerator {
         )
         .build()
         .writeToString()
-        .replaceImports(clazz)
         .addGeneratedByComment()
 
     val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))
