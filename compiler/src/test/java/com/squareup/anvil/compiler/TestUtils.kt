@@ -9,6 +9,7 @@ import com.tschuchort.compiletesting.SourceFile
 import dagger.Component
 import dagger.Module
 import dagger.Subcomponent
+import dagger.android.processor.AndroidProcessor
 import dagger.internal.codegen.ComponentProcessor
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.name.FqName
@@ -20,6 +21,23 @@ import kotlin.reflect.KClass
 internal fun compile(
   source: String,
   enableDaggerAnnotationProcessor: Boolean = false,
+  enableDaggerAndroidAnnotationProcessor: Boolean = false,
+  generateDaggerFactories: Boolean = false,
+  block: Result.() -> Unit = { }
+): Result {
+  return compile(
+    sourceFiles = listOf(source),
+    enableDaggerAnnotationProcessor = enableDaggerAnnotationProcessor,
+    enableDaggerAndroidAnnotationProcessor = enableDaggerAndroidAnnotationProcessor,
+    generateDaggerFactories = generateDaggerFactories,
+    block = block
+  )
+}
+
+internal fun compile(
+  sourceFiles: List<String>,
+  enableDaggerAnnotationProcessor: Boolean = false,
+  enableDaggerAndroidAnnotationProcessor: Boolean = false,
   generateDaggerFactories: Boolean = false,
   block: Result.() -> Unit = { }
 ): Result {
@@ -32,6 +50,10 @@ internal fun compile(
 
         if (enableDaggerAnnotationProcessor) {
           annotationProcessors = listOf(ComponentProcessor())
+        }
+
+        if (enableDaggerAndroidAnnotationProcessor) {
+          annotationProcessors = listOf(ComponentProcessor(), AndroidProcessor())
         }
 
         val commandLineProcessor = AnvilCommandLineProcessor()
@@ -50,10 +72,12 @@ internal fun compile(
             )
         )
 
-        val name = "${workingDir.absolutePath}/sources/src/main/java/com/squareup/test/Source.kt"
-        check(File(name).parentFile.mkdirs())
-
-        sources = listOf(SourceFile.kotlin(name, contents = source, trimIndent = true))
+        sources = sourceFiles.mapIndexed { index, content ->
+          val name =
+            "${workingDir.absolutePath}/sources/src/main/java/com/squareup/test/Source$index.kt"
+          File(name).parentFile.mkdirs()
+          SourceFile.kotlin(name, contents = content, trimIndent = true)
+        }
       }
       .compile()
       .also(block)
@@ -164,6 +188,11 @@ internal fun Class<*>.membersInjector(): Class<*> {
 
   return classLoader.loadClass("${`package`.name}." +
       "$enclosingClassString${simpleName}_MembersInjector")
+}
+
+@OptIn(ExperimentalStdlibApi::class)
+internal fun Class<*>.contributesAndroidInjector(target: String): Class<*> {
+  return classLoader.loadClass("${`package`.name}.DaggerModule1_Bind$target")
 }
 
 @OptIn(ExperimentalStdlibApi::class)

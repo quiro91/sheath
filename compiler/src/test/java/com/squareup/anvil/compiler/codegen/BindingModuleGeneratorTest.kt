@@ -275,7 +275,7 @@ class BindingModuleGeneratorTest(
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
 
-      assertThat(messages).contains("Source.kt: (9, 11)")
+      assertThat(messages).contains("Source0.kt: (9, 11)")
       assertThat(messages).contains(
           "com.squareup.test.ContributingInterface contributes a binding, but does not specify " +
               "the bound type. This is only allowed with exactly one direct super type. If there " +
@@ -306,7 +306,7 @@ class BindingModuleGeneratorTest(
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
 
-      assertThat(messages).contains("Source.kt: (11, 11)")
+      assertThat(messages).contains("Source0.kt: (11, 11)")
       assertThat(messages).contains(
           "com.squareup.test.ContributingInterface contributes a binding, but does not specify " +
               "the bound type. This is only allowed with exactly one direct super type. If there " +
@@ -333,7 +333,7 @@ class BindingModuleGeneratorTest(
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
 
-      assertThat(messages).contains("Source.kt: (7, 1)")
+      assertThat(messages).contains("Source0.kt: (7, 1)")
       assertThat(messages).contains(
           "com.squareup.test.ContributingInterface contributes a binding, but does not specify " +
               "the bound type. This is only allowed with exactly one direct super type. If there " +
@@ -362,7 +362,7 @@ class BindingModuleGeneratorTest(
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
 
-      assertThat(messages).contains("Source.kt: (9, 11)")
+      assertThat(messages).contains("Source0.kt: (9, 11)")
       assertThat(messages).contains(
           "com.squareup.test.ContributingInterface contributes a binding for " +
               "com.squareup.test.ParentInterface, but doesn't extend this type."
@@ -476,7 +476,7 @@ class BindingModuleGeneratorTest(
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
 
-      assertThat(messages).contains("Source.kt: (6, 11)")
+      assertThat(messages).contains("Source0.kt: (6, 11)")
       assertThat(messages).contains(
           "Binding com.squareup.test.ParentInterface contains type parameters(s)" +
               " <Map<String, List<Pair<String, Int>>>, SomeOtherType>"

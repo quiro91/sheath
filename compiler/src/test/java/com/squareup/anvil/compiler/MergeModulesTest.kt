@@ -85,7 +85,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (7, 7)")
+      assertThat(messages).contains("Source0.kt: (7, 7)")
     }
   }
 
@@ -154,7 +154,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (7, 16)")
+      assertThat(messages).contains("Source0.kt: (7, 16)")
     }
   }
 
@@ -245,7 +245,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (17, 16)")
+      assertThat(messages).contains("Source0.kt: (17, 16)")
       assertThat(messages).contains(
           "com.squareup.test.DaggerModule2 with scope kotlin.Any wants to replace " +
               "com.squareup.test.ContributingInterface with scope kotlin.Unit. The replacement " +
@@ -311,7 +311,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (17, 11)")
+      assertThat(messages).contains("Source0.kt: (17, 11)")
       assertThat(messages).contains(
           "com.squareup.test.ContributingInterface with scope kotlin.Any wants to replace " +
               "com.squareup.test.DaggerModule2 with scope kotlin.Unit. The replacement must use " +
@@ -343,7 +343,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (13, 16)")
+      assertThat(messages).contains("Source0.kt: (13, 16)")
     }
   }
 
@@ -372,7 +372,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (15, 16)")
+      assertThat(messages).contains("Source0.kt: (15, 16)")
       assertThat(messages).contains(
           "com.squareup.test.DaggerModule2 with scope kotlin.Any wants to replace " +
               "com.squareup.test.DaggerModule3 with scope kotlin.Unit. The replacement must use " +
@@ -467,7 +467,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (16, 7)")
+      assertThat(messages).contains("Source0.kt: (16, 7)")
       assertThat(messages).contains(
           "com.squareup.test.DaggerModule1 with scope kotlin.Any wants to exclude " +
               "com.squareup.test.DaggerModule2 with scope kotlin.Unit. The exclusion must " +
@@ -526,7 +526,7 @@ class MergeModulesTest {
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
       // Position to the class.
-      assertThat(messages).contains("Source.kt: (17, 11)")
+      assertThat(messages).contains("Source0.kt: (17, 11)")
       assertThat(messages).contains(
           "com.squareup.test.ComponentInterface with scope kotlin.Any wants to exclude " +
               "com.squareup.test.ContributingInterface with scope kotlin.Unit. The exclusion " +
@@ -588,7 +588,7 @@ class MergeModulesTest {
       ) {
         assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
         // Position to the class.
-        assertThat(messages).contains("Source.kt: (8, ")
+        assertThat(messages).contains("Source0.kt: (8, ")
       }
     }
   }
@@ -641,7 +641,7 @@ class MergeModulesTest {
         """
     ) {
       assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
-      assertThat(messages).contains("Source.kt: (19, 11)")
+      assertThat(messages).contains("Source0.kt: (19, 11)")
     }
   }
 }
