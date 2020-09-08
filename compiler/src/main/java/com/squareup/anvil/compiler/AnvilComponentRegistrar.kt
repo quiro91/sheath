@@ -29,7 +29,6 @@ class AnvilComponentRegistrar : ComponentRegistrar {
     val sourceGenFolder = File(configuration.getNotNull(srcGenDirKey))
 
     val codeGenerators = mutableListOf<CodeGenerator>()
-
     if (configuration.get(generateDaggerFactoriesKey, false)) {
       codeGenerators += ProvidesMethodFactoryGenerator()
       codeGenerators += InjectConstructorFactoryGenerator()

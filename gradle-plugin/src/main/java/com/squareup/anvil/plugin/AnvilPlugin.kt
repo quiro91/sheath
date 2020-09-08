@@ -69,8 +69,6 @@ open class AnvilPlugin : Plugin<Project> {
       // This needs to be disabled, otherwise compiler plugins fail in weird ways when generating stubs.
       project.extensions.findByType(KaptExtension::class.java)?.correctErrorTypes = false
     }
-
-    project.dependencies.add("implementation", "$GROUP:annotations:$VERSION")
   }
 
   private fun disablePreciseJavaTracking(

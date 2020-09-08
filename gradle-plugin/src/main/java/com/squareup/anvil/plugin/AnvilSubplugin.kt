@@ -62,7 +62,7 @@ class AnvilSubplugin : KotlinGradleSubplugin<AbstractCompile> {
         srcGenDirOption,
         SubpluginOption(
             key = "generate-dagger-factories",
-            value = extension.generateDaggerFactories.toString()
+            value = "true"
         )
     )
   }
