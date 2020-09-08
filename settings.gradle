@@ -1,10 +1,4 @@
-include ':annotations'
 include ':compiler'
-include ':integration-tests:library'
-include ':integration-tests:tests'
-include ':sample:app'
-include ':sample:library'
-include ':sample:scopes'
 
 // Use the local version instead of a remote artifact.
 includeBuild('gradle-plugin') {
