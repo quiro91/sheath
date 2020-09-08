@@ -47,10 +47,10 @@ apply from: rootProject.file('generate_build_properties.gradle')
 
 gradlePlugin {
   plugins {
-    anvilPlugin {
-      id = "com.squareup.anvil"
+    sheathPlugin {
+      id = "dev.quiro.sheath"
       displayName = project.findProperty('POM_NAME')
-      implementationClass = "com.squareup.anvil.plugin.AnvilPlugin"
+      implementationClass = "dev.quiro.sheath.plugin.SheathPlugin"
       description = project.findProperty('POM_DESCRIPTION')
     }
   }

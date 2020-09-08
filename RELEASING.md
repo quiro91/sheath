@@ -23,7 +23,7 @@
    git push && git push --tags
    ```
 1. Create the release on GitHub:
-   1. Go to the [Releases](https://github.com/square/anvil/releases) page for the GitHub project.
+   1. Go to the [Releases](https://github.com/quiro91/sheath/releases) page for the GitHub project.
    1. Click "Draft a new release".
    1. Enter the tag name you just pushed.
    1. Title the release with the same name as the tag.
@@ -36,11 +36,3 @@
 ```
 ./gradlew clean installArchives --no-build-cache && cd gradle-plugin && ./gradlew clean installArchives --no-build-cache && cd ..
 ```
-
-# Notes
-
-## Snapshot Releases
-
-Snapshot releases are similar to production releases. Only make sure that the version contains the
-`-SNAPSHOT` suffix. Closing and releasing the staging repository on Sonatype is not necessary for
-snapshot releases. You can verify the release [here](https://oss.sonatype.org/content/repositories/snapshots/com/squareup/anvil/).
