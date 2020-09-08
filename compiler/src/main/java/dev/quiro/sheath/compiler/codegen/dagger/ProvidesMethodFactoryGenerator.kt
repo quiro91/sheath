@@ -1,6 +1,5 @@
 package dev.quiro.sheath.compiler.codegen.dagger
 
-import com.squareup.anvil.compiler.AnvilCompilationException
 import dev.quiro.sheath.compiler.codegen.CodeGenerator.GeneratedFile
 import dev.quiro.sheath.compiler.codegen.PrivateCodeGenerator
 import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
@@ -31,6 +30,7 @@ import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.jvm.jvmStatic
 import dagger.internal.Factory
 import dagger.internal.Preconditions
+import dev.quiro.sheath.compiler.SheathCompilationException
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
@@ -63,7 +63,7 @@ internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
                     .filterValues { it.size > 1 }
 
                 if (duplicateFunctions.isNotEmpty()) {
-                  throw AnvilCompilationException(
+                  throw SheathCompilationException(
                       element = clazz,
                       message = "Cannot have more than one binding method with the same name in " +
                           "a single module: ${duplicateFunctions.keys.joinToString()}"

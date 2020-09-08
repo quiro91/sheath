@@ -353,6 +353,6 @@ fun KtTypeReference.isFunctionType(): Boolean = typeElement is KtFunctionType
 fun KtClassOrObject.isGenericClass(): Boolean = typeParameterList != null
 
 fun KtCallableDeclaration.requireTypeReference(): KtTypeReference =
-  typeReference ?: throw AnvilCompilationException(
+  typeReference ?: throw SheathCompilationException(
       "Couldn't obtain type reference.", element = this
   )

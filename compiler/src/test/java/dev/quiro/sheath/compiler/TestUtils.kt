@@ -87,6 +87,10 @@ internal val Result.innerModule: Class<*>
 internal val Result.injectClass: Class<*>
   get() = classLoader.loadClass("com.squareup.test.InjectClass")
 
+internal val Result.componentInterfaceSheathModule: Class<*>
+  get() = classLoader
+    .loadClass("$MODULE_PACKAGE_PREFIX.com.squareup.test.ComponentInterfaceAnvilModule")
+
 @OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.moduleFactoryClass(
   providerMethodName: String,

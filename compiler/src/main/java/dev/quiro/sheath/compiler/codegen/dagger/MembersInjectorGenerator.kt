@@ -1,6 +1,6 @@
 package dev.quiro.sheath.compiler.codegen.dagger
 
-import dev.quiro.sheath.compiler.codegen.CodeGenerator
+import dev.quiro.sheath.compiler.codegen.PrivateCodeGenerator
 import dev.quiro.sheath.compiler.codegen.CodeGenerator.GeneratedFile
 import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
 import dev.quiro.sheath.compiler.codegen.asClassName

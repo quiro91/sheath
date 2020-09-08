@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package com.squareup.anvil.compiler.dagger
+package dev.quiro.sheath.compiler.dagger
 
 // These classes are used in some of the unit tests. Don't touch them.
 

@@ -83,7 +83,7 @@ private fun FqName.asClassName(module: ModuleDescriptor): ClassName {
     }
   }
 
-  throw AnvilCompilationException("Couldn't parse ClassName for $this.")
+  throw SheathCompilationException("Couldn't parse ClassName for $this.")
 }
 
 internal fun KtTypeReference.requireTypeName(

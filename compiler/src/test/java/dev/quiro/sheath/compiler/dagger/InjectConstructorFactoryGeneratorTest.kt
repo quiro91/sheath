@@ -1095,7 +1095,7 @@ public final class InjectClass_Factory implements Factory<InjectClass> {
     /*
 package com.squareup.test;
 
-import com.squareup.anvil.compiler.dagger.OuterClass;
+import dev.quiro.sheath.compiler.dagger.OuterClass;
 import dagger.internal.Factory;
 import javax.annotation.Generated;
 import javax.inject.Provider;
@@ -1135,7 +1135,7 @@ public final class InjectClass_Inner_Factory implements Factory<InjectClass.Inne
         """
         package com.squareup.test
         
-        import com.squareup.anvil.compiler.dagger.OuterClass
+        import dev.quiro.sheath.compiler.dagger.OuterClass
         import javax.inject.Inject
         
         class InjectClass(innerClass: InnerClass): OuterClass(innerClass) {
