@@ -1,97 +1,19 @@
-# Anvil
+# Sheath
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.squareup.anvil/gradle-plugin.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.squareup.anvil%22)
-[![CI](https://github.com/square/anvil/workflows/CI/badge.svg)](https://github.com/square/anvil/actions?query=branch%3Amain)
+[![CI](https://github.com/quiro91/sheath/workflows/CI/badge.svg)](https://github.com/quiro91/sheath/actions?query=branch%3Amain)
 
-Anvil is a Kotlin compiler plugin to make dependency injection with [Dagger](https://dagger.dev/)
-easier by automatically merging Dagger modules and component interfaces. In a nutshell, instead of
-manually adding modules to a Dagger component and making the Dagger component extend all component
-interfaces, these modules and interfaces can be included in a component automatically:
-
-```kotlin
-@Module
-@ContributesTo(AppScope::class)
-class DaggerModule { .. }
-
-@ContributesTo(AppScope::class)
-interface ComponentInterface {
-  fun getSomething(): Something
-  fun injectActivity(activity: MyActivity)
-}
-
-// The real Dagger component.
-@MergeComponent(AppScope::class)
-interface AppComponent
-```
-
-The generated `AppComponent` interface that Dagger sees looks like this:
-
-```kotlin
-@Component(modules = [DaggerModule::class])
-interface AppComponent : ComponentInterface
-```
-
-Notice that `AppComponent` automatically includes `DaggerModule` and extends `ComponentInterface`.
+Sheath is a Kotlin compiler plugin created to improve build performances when using Dagger and Dagger-Android.
+Sheath allows you to generate Factory classes that usually the Dagger annotation processor would 
+generate for `@Provides` methods, `@Inject` constructors, `@Inject` fields and `@ContributesAndroidInjector` methods. 
+The benefit of this feature is that you don't need to enable the Dagger annotation processor in this module. That often 
+means you can skip KAPT and the stub generating task. In addition Sheath generates Kotlin instead 
+of Java code, which allows Gradle to skip the Java compilation task. The result is faster 
+builds.
 
 ## Setup
 
-The plugin consists of a Gradle plugin and Kotlin compiler plugin. The Gradle plugin automatically
-adds the Kotlin compiler plugin and annotation dependencies. It needs to be applied in all modules
-that either contribute classes to the dependency graph or merge them:
-
-```groovy
-plugins {
-  id 'com.squareup.anvil' version "${latest_version}"
-}
-```
-
-Or you can use the old way to apply a plugin:
-```groovy
-buildscript {
-  repositories {
-    mavenCentral()
-  }
-  dependencies {
-    classpath "com.squareup.anvil:gradle-plugin:${latest_version}"
-  }
-}
-
-apply plugin: 'com.squareup.anvil'
-```
-
-## Quick Start
-
-There are three important annotations to work with Anvil.
-
-`@ContributesTo` can be added to Dagger modules and component interfaces that should be included
-in the Dagger component. Classes with this annotation are automatically merged by the compiler
-plugin as long as they are on the compile classpath.
-
-`@MergeComponent` is used instead of the Dagger annotation `@Component`. Anvil will generate
-the Dagger annotation and automatically include all modules and component interfaces that were
-contributed the same scope.
-
-`@MergeSubcomponent` is similar to `@MergeComponent` and should be used for subcomponents instead.
-
-## Scopes
-
-Scope classes are only markers. The class `AppScope` from the sample could look like this:
-
-```kotlin
-abstract class AppScope private constructor()
-```
-
-These scope classes help Anvil make a connection between the Dagger component and which Dagger
-modules and other component interfaces to include.
-
-Scope classes are independent of the Dagger scopes. It's still necessary to set a scope for
-the Dagger component, e.g.
-
-```kotlin
-@Singleton
-@MergeComponent(AppScope::class)
-interface AppComponent
-```
+Coming soon
 
 ## Contributed bindings
 
@@ -187,28 +109,13 @@ in the application module.
 
 ## Performance
 
-Anvil is a convenience tool. Similar to Dagger it doesn't improve build speed compared to
-writing all code manually before running a build. The savings are in developer time.
-
-The median overhead of Anvil is around 4%, which often means only a few hundred milliseconds
-on top. The overhead is marginal, because Kotlin code is still compiled incrementally and Kotlin
-compile tasks are skipped entirely, if nothing has changed. This doesn't change with Anvil.
-
-![Benchmark](images/benchmark.png?raw=true "Benchmark")
-
-## Kotlin compiler plugin
-
-We investigated whether other alternatives like a bytecode transformer and an annotation processor
-would be a better option, but ultimately decided against them. For what we tried to achieve a
-bytecode transformer runs too late in the build process; after the Dagger components have been
-generated. An annotation processor especially when using Kapt would be too slow. Even though the
-Kotlin compiler plugin API isn't stable and contains bugs we decided to write a compiler plugin.
+Coming soon
 
 ## Limitations
 
 #### No Java support
 
-Anvil is a Kotlin compiler plugin, thus Java isn’t supported. You can use Anvil in
+Sheath is a Kotlin compiler plugin, thus Java isn’t supported. You can use Sheath in
 modules with mixed Java and Kotlin code for Kotlin classes, though.
 
 #### Incremental Kotlin compilation breaks compiler plugins
@@ -221,54 +128,6 @@ The Gradle plugin implements workarounds for these bugs, so you shouldn't notice
 are that incremental Kotlin compilation is disabled for stub generating tasks (which don't run a
 full compilation before KAPT anyways). The flag `usePreciseJavaTracking` is disabled, if the
 module contains Java code.
-
-## Hilt
-
-[Hilt](https://dagger.dev/hilt/) is Google's opinionated guide how to dependency injection on
-Android. It provides a similar feature with `@InstallIn` for entry points and modules as Anvil.
-If you use Hilt, then you don't need to use Anvil.
-
-Hilt includes many other features and comes with some restrictions. For us it was infeasible to
-migrate a codebase to Hilt with thousands of modules and many Dagger components while we only
-needed the feature to merge modules and component interfaces automatically. We also restrict the
-usage of the Dagger annotation processor to only [specific modules](https://speakerdeck.com/vrallev/android-at-scale-at-square?slide=36)
-for performance reasons. With Hilt we wouldn't be able to enforce this requirement anymore for
-component interfaces. The development of Anvil started long before Hilt was announced and the
-internal version is being used in production for a while.
-
-## Experimental Dagger Factory generation
-
-Anvil allows you to generate Factory classes that usually the Dagger annotation processor would 
-generate for `@Provides` methods, `@Inject` constructors and `@Inject` fields. The benefit of this 
-feature is that you don't need to enable the Dagger annotation processor in this module. That often 
-means you can skip KAPT and the stub generating task. In addition Anvil generates Kotlin instead 
-of Java code, which allows Gradle to skip the Java compilation task. The result is faster 
-builds.
-
-```groovy
-anvil {
-  generateDaggerFactories = true // default is false
-}
-```
-
-In our codebase we measured that modules using Dagger build 65% faster with this new Anvil feature
-compared to using the Dagger annotation processor:
-
-  | Stub generation | Kapt | Javac | Kotlinc | Sum
-:--- | ---: | ---: | ---: | ---: | ---:
-Dagger | 12.976 | 40.377 | 8.571 | 10.241 | 72.165
-Anvil | 0 | 0 | 6.965 | 17.748 | 24.713
-
-For full builds of applications we measured savings of 16% on average.
-
-![Benchmark Dagger Factories](images/benchmark_dagger_factories.png?raw=true "Benchmark Dagger Factories")
-
-This feature can only be enabled in Gradle modules that don't compile any Dagger component. Since 
-Anvil only processes Kotlin code, you shouldn't enable it in modules with mixed Kotlin / Java 
-sources either.
-
-When you enable this feature, don't forget to remove the Dagger annotation processor. You should
-keep all other dependencies.
 
 ## License
 
