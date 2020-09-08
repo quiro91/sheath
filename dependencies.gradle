@@ -5,12 +5,12 @@ ext {
   kotlinVersion = project.hasProperty('square.kotlinVersion') ?
       project.getProperty('square.kotlinVersion') : '1.3.72'
 
-  generateDaggerFactoriesWithAnvil = (project.hasProperty('square.generateDaggerFactoriesWithAnvil') ?
-      project.getProperty('square.generateDaggerFactoriesWithAnvil') : 'true').toBoolean()
+  generateDaggerFactoriesWithSheath = (project.hasProperty('square.generateDaggerFactoriesWithSheath') ?
+      project.getProperty('square.generateDaggerFactoriesWithSheath') : 'true').toBoolean()
 
   deps = [
       android_gradle_plugin: "com.android.tools.build:gradle:4.0.1",
-      anvil_plugin: "com.squareup.anvil:gradle-plugin:${findProperty('VERSION_NAME')}",
+      sheath_plugin: "dev.quiro.sheath:gradle-plugin:${findProperty('VERSION_NAME')}",
       maven_publishing_plugin: "com.vanniktech:gradle-maven-publish-plugin:0.11.1",
       gradle_publishing_plugin: "com.gradle.publish:plugin-publish-plugin:0.12.0",
       ktlint_plugin: "org.jlleitschuh.gradle:ktlint-gradle:9.2.1",

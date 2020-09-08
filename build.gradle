@@ -18,7 +18,7 @@ buildscript {
     classpath deps.android_gradle_plugin
     classpath deps.kotlin.gradle_plugin
     classpath deps.ktlint_plugin
-    classpath deps.anvil_plugin
+    classpath deps.sheath_plugin
     classpath deps.maven_publishing_plugin
   }
 }
@@ -71,7 +71,7 @@ subprojects {
   // needed to make it work for now.
   configurations.all {
     resolutionStrategy.dependencySubstitution {
-      substitute module("com.squareup.anvil:compiler") with project(':compiler')
+      substitute module("dev.quiro.sheath:compiler") with project(':compiler')
     }
   }
 }
