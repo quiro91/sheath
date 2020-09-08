@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassBody
-import org.jetbrains.kotlin.psi.KtClassLiteralExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
@@ -28,8 +27,6 @@ import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtTypeArgumentList
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtUserType
-import org.jetbrains.kotlin.psi.KtValueArgument
-import org.jetbrains.kotlin.psi.KtValueArgumentName
 import org.jetbrains.kotlin.psi.psiUtil.parents
 import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
@@ -240,20 +237,22 @@ private fun PsiElement.findFqNameInSuperTypes(
         .resolveClassByFqName(FqName("$outerClass.$classReference"), FROM_BACKEND)
         ?.fqNameSafe
 
-  val clazz = parents.filterIsInstance<KtClassOrObject>().first()
-  tryToResolveClassFqName(clazz.requireFqName())?.let { return it }
+  return parents.filterIsInstance<KtClassOrObject>()
+    .flatMap { clazz ->
+      tryToResolveClassFqName(clazz.requireFqName())?.let { return@flatMap sequenceOf(it) }
 
-  // At this point we can't work with Psi APIs anymore. We need to resolve the super types and try
-  // to find inner class in them.
-  val descriptor = module.resolveClassByFqName(clazz.requireFqName(), FROM_BACKEND)
-      ?: throw SheathCompilationException(
+      // At this point we can't work with Psi APIs anymore. We need to resolve the super types
+      // and try to find inner class in them.
+      val descriptor = module.resolveClassByFqName(clazz.requireFqName(), FROM_BACKEND)
+        ?: throw SheathCompilationException(
           message = "Couldn't resolve class descriptor for ${clazz.requireFqName()}",
           element = clazz
-      )
+        )
 
-  return listOf(descriptor.defaultType).getAllSuperTypes()
-      .mapNotNull { tryToResolveClassFqName(it) }
-      .firstOrNull()
+      listOf(descriptor.defaultType).getAllSuperTypes()
+        .mapNotNull { tryToResolveClassFqName(it) }
+    }
+    .firstOrNull()
 }
 
 internal fun KtClassOrObject.functions(
