@@ -1,11 +1,5 @@
 package com.squareup.anvil.compiler
 
-import com.squareup.anvil.annotations.ContributesBinding
-import com.squareup.anvil.annotations.ContributesTo
-import com.squareup.anvil.annotations.MergeComponent
-import com.squareup.anvil.annotations.MergeSubcomponent
-import com.squareup.anvil.annotations.compat.MergeInterfaces
-import com.squareup.anvil.annotations.compat.MergeModules
 import com.squareup.anvil.compiler.codegen.requireFqName
 import dagger.Binds
 import dagger.Component
@@ -31,8 +25,6 @@ import org.jetbrains.kotlin.resolve.constants.ArrayValue
 import org.jetbrains.kotlin.resolve.constants.ConstantValue
 import org.jetbrains.kotlin.resolve.constants.KClassValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
-import org.jetbrains.kotlin.resolve.descriptorUtil.getSuperClassNotAny
-import org.jetbrains.kotlin.resolve.descriptorUtil.getSuperInterfaces
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.typeUtil.supertypes
@@ -40,12 +32,6 @@ import org.jetbrains.org.objectweb.asm.Type
 import javax.inject.Inject
 import javax.inject.Provider
 
-internal val mergeComponentFqName = FqName(MergeComponent::class.java.canonicalName)
-internal val mergeSubcomponentFqName = FqName(MergeSubcomponent::class.java.canonicalName)
-internal val mergeInterfacesFqName = FqName(MergeInterfaces::class.java.canonicalName)
-internal val mergeModulesFqName = FqName(MergeModules::class.java.canonicalName)
-internal val contributesToFqName = FqName(ContributesTo::class.java.canonicalName)
-internal val contributesBindingFqName = FqName(ContributesBinding::class.java.canonicalName)
 internal val daggerComponentFqName = FqName(Component::class.java.canonicalName)
 internal val daggerSubcomponentFqName = FqName(Subcomponent::class.java.canonicalName)
 internal val daggerModuleFqName = FqName(Module::class.java.canonicalName)
@@ -59,12 +45,6 @@ internal val providerFqName = FqName(Provider::class.java.canonicalName)
 internal val jvmSuppressWildcardsFqName = FqName(JvmSuppressWildcards::class.java.canonicalName)
 
 internal val daggerDoubleCheckFqNameString = DoubleCheck::class.java.canonicalName
-
-internal const val HINT_CONTRIBUTES_PACKAGE_PREFIX = "anvil.hint.merge"
-internal const val HINT_BINDING_PACKAGE_PREFIX = "anvil.hint.binding"
-internal const val MODULE_PACKAGE_PREFIX = "anvil.module"
-
-internal const val ANVIL_MODULE_SUFFIX = "AnvilModule"
 
 internal const val REFERENCE_SUFFIX = "_reference"
 internal const val SCOPE_SUFFIX = "_scope"
@@ -118,11 +98,6 @@ internal fun KotlinType.argumentType(): KotlinType = arguments.first().type
 
 internal fun KotlinType.classDescriptorForType() = DescriptorUtils.getClassDescriptorForType(this)
 
-internal fun FqName.isAnvilModule(): Boolean {
-  val name = asString()
-  return name.startsWith(MODULE_PACKAGE_PREFIX) && name.endsWith(ANVIL_MODULE_SUFFIX)
-}
-
 internal fun AnnotationDescriptor.getAnnotationValue(key: String): ConstantValue<*>? =
   allValueArguments[Name.identifier(key)]
 
@@ -142,31 +117,6 @@ internal fun AnnotationDescriptor.replaces(module: ModuleDescriptor): List<Class
             .classDescriptorForType()
       }
       ?: emptyList()
-}
-
-internal fun AnnotationDescriptor.boundType(
-  module: ModuleDescriptor,
-  annotatedClass: ClassDescriptor
-): ClassDescriptor {
-  (getAnnotationValue("boundType") as? KClassValue)
-      ?.getType(module)
-      ?.argumentType()
-      ?.classDescriptorForType()
-      ?.let { return it }
-
-  val directSuperTypes = annotatedClass.getSuperInterfaces() +
-      (annotatedClass.getSuperClassNotAny()
-          ?.let { listOf(it) }
-          ?: emptyList())
-
-  return directSuperTypes.singleOrNull()
-      ?: throw AnvilCompilationException(
-          classDescriptor = annotatedClass,
-          message = "${annotatedClass.fqNameSafe} contributes a binding, but does not " +
-              "specify the bound type. This is only allowed with exactly one direct super type. " +
-              "If there are multiple or none, then the bound type must be explicitly defined in " +
-              "the @${contributesBindingFqName.shortName()} annotation."
-      )
 }
 
 internal fun KtClassOrObject.generateClassName(

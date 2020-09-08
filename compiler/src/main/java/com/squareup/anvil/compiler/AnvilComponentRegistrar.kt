@@ -1,22 +1,18 @@
 package com.squareup.anvil.compiler
 
 import com.google.auto.service.AutoService
-import com.squareup.anvil.compiler.codegen.BindingModuleGenerator
 import com.squareup.anvil.compiler.codegen.CodeGenerationExtension
-import com.squareup.anvil.compiler.codegen.ContributesBindingGenerator
-import com.squareup.anvil.compiler.codegen.ContributesToGenerator
+import com.squareup.anvil.compiler.codegen.CodeGenerator
 import com.squareup.anvil.compiler.codegen.dagger.ComponentDetectorCheck
 import com.squareup.anvil.compiler.codegen.dagger.ContributesAndroidInjectorGenerator
 import com.squareup.anvil.compiler.codegen.dagger.InjectConstructorFactoryGenerator
 import com.squareup.anvil.compiler.codegen.dagger.MembersInjectorGenerator
 import com.squareup.anvil.compiler.codegen.dagger.ProvidesMethodFactoryGenerator
-import org.jetbrains.kotlin.codegen.extensions.ExpressionCodegenExtension
 import org.jetbrains.kotlin.com.intellij.mock.MockProject
 import org.jetbrains.kotlin.com.intellij.openapi.extensions.Extensions
 import org.jetbrains.kotlin.com.intellij.openapi.extensions.impl.ExtensionPointImpl
 import org.jetbrains.kotlin.compiler.plugin.ComponentRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.resolve.extensions.SyntheticResolveExtension
 import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
 import java.io.File
 
@@ -31,13 +27,8 @@ class AnvilComponentRegistrar : ComponentRegistrar {
     configuration: CompilerConfiguration
   ) {
     val sourceGenFolder = File(configuration.getNotNull(srcGenDirKey))
-    val scanner = ClassScanner()
 
-    val codeGenerators = mutableListOf(
-        ContributesToGenerator(),
-        ContributesBindingGenerator(),
-        BindingModuleGenerator(scanner)
-    )
+    val codeGenerators = mutableListOf<CodeGenerator>()
 
     if (configuration.get(generateDaggerFactoriesKey, false)) {
       codeGenerators += ProvidesMethodFactoryGenerator()
@@ -62,13 +53,6 @@ class AnvilComponentRegistrar : ComponentRegistrar {
     // couldn't generate any code.
     AnalysisHandlerExtension.registerExtensionFirst(
         project, codeGenerationExtension
-    )
-
-    SyntheticResolveExtension.registerExtension(
-        project, InterfaceMerger(scanner)
-    )
-    ExpressionCodegenExtension.registerExtension(
-        project, ModuleMerger(scanner)
     )
   }
 

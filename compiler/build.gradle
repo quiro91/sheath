@@ -3,7 +3,6 @@ apply plugin: 'org.jetbrains.kotlin.kapt'
 apply plugin: 'com.vanniktech.maven.publish'
 
 dependencies {
-  implementation project(':annotations')
   implementation deps.dagger2.dagger
   implementation deps.dagger2.android
   implementation deps.dagger2.compiler_android
