@@ -1,5 +1,6 @@
 package dev.quiro.sheath.compiler.codegen
 
+import com.squareup.kotlinpoet.ClassName
 import dev.quiro.sheath.compiler.SheathCompilationException
 import dev.quiro.sheath.compiler.getAllSuperTypes
 import dev.quiro.sheath.compiler.jvmSuppressWildcardsFqName
@@ -58,6 +59,17 @@ internal fun KtAnnotated.isInterface(): Boolean = this is KtClass && this.isInte
 internal fun KtAnnotated.hasAnnotation(fqName: FqName): Boolean {
   return findAnnotation(fqName) != null
 }
+
+internal fun KtAnnotationEntry.extractSingleParameter(): PsiElement? =
+  (valueArguments
+    .firstOrNull() as? KtValueArgument)
+    ?.children
+    ?.getOrNull(1)
+
+internal fun PsiElement.extractArrayOfClass(module: ModuleDescriptor): List<ClassName> =
+  children
+    .flatMap { it.children.map { clazz -> clazz.requireFqName(module) } }
+    .map { ClassName(it.parent().asString(), it.shortName().asString()) }
 
 internal fun KtAnnotated.findAnnotation(fqName: FqName): KtAnnotationEntry? {
   val annotationEntries = annotationEntries
