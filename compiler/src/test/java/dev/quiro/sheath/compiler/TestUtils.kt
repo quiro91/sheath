@@ -1,12 +1,9 @@
 package dev.quiro.sheath.compiler
 
-import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.KotlinCompilation.Result
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
-import dagger.Component
-import dagger.Subcomponent
 import dagger.android.processor.AndroidProcessor
 import dagger.internal.codegen.ComponentProcessor
 import org.jetbrains.kotlin.config.JvmTarget
@@ -87,10 +84,6 @@ internal val Result.innerModule: Class<*>
 internal val Result.injectClass: Class<*>
   get() = classLoader.loadClass("com.squareup.test.InjectClass")
 
-internal val Result.componentInterfaceSheathModule: Class<*>
-  get() = classLoader
-    .loadClass("$MODULE_PACKAGE_PREFIX.com.squareup.test.ComponentInterfaceAnvilModule")
-
 @OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.moduleFactoryClass(
   providerMethodName: String,
@@ -124,15 +117,5 @@ internal fun Class<*>.membersInjector(): Class<*> {
 internal fun Class<*>.contributesAndroidInjector(target: String): Class<*> {
   return classLoader.loadClass("${`package`.name}.DaggerModule1_Bind$target")
 }
-
-internal val Class<*>.daggerComponent: Component
-  get() = annotations.filterIsInstance<Component>()
-      .also { assertThat(it).hasSize(1) }
-      .first()
-
-internal val Class<*>.daggerSubcomponent: Subcomponent
-  get() = annotations.filterIsInstance<Subcomponent>()
-      .also { assertThat(it).hasSize(1) }
-      .first()
 
 internal infix fun Class<*>.extends(other: Class<*>): Boolean = other.isAssignableFrom(this)

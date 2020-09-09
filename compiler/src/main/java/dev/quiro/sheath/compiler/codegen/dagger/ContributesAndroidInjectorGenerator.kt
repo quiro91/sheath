@@ -30,14 +30,16 @@ import dagger.android.AndroidInjector
 import dagger.multibindings.ClassKey
 import dagger.multibindings.IntoMap
 import dev.quiro.sheath.compiler.codegen.PrivateCodeGenerator
+import dev.quiro.sheath.compiler.codegen.extractArrayOfClass
+import dev.quiro.sheath.compiler.codegen.extractSingleParameter
 import dev.quiro.sheath.compiler.codegen.requireTypeReference
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtValueArgument
 import java.io.File
+import java.lang.StringBuilder
 
 internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
   override fun generateCodePrivate(
@@ -68,13 +70,15 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
     function: KtNamedFunction
   ): CodeGenerator.GeneratedFile {
     val packageName = clazz.containingKtFile.packageFqName.asString()
-    val bindingTarget = function.requireTypeReference().requireTypeName(module)
+    val returnType = function.requireTypeReference()
+      .requireTypeName(module)
       .withJvmSuppressWildcardsIfNeeded(function)
-    val bindingTargetName = (bindingTarget as ClassName).simpleName
+    val bindingTargetName = function.requireTypeReference().text
     val className = "${clazz.generateClassName()}_Bind$bindingTargetName"
     val factoryClass = ClassName(packageName, className)
     val contributesAndroidInjector = function.findAnnotation(daggerContributesAndroidInjector)!!
-    val contributesAndroidInjectorParams = contributesAndroidInjector.valueArguments
+    val moduleClasses = contributesAndroidInjector.extractSingleParameter()
+      ?.extractArrayOfClass(module) ?: emptyList()
     val scopeAnnotations = function.annotationEntries
       .asSequence()
       .filterNot { it == contributesAndroidInjector }
@@ -91,7 +95,7 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
         val subcomponentFactory = TypeSpec.interfaceBuilder(subcomponentFactoryClassName)
           .addAnnotation(Subcomponent.Factory::class.java)
           .addSuperinterface(
-            AndroidInjector.Factory::class.asClassName().parameterizedBy(bindingTarget)
+            AndroidInjector.Factory::class.asClassName().parameterizedBy(returnType)
           )
           .build()
 
@@ -101,8 +105,15 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
         val subcomponent = TypeSpec.interfaceBuilder(ClassName(packageName, subcomponentClassName))
           .addAnnotation(
             AnnotationSpec.builder(Subcomponent::class.java).apply {
-              if (contributesAndroidInjectorParams.isNotEmpty()) {
-                addMember((contributesAndroidInjectorParams.first() as KtValueArgument).text)
+              if (moduleClasses.isNotEmpty()) {
+                val builder = StringBuilder("modules = [").apply {
+                  moduleClasses.forEachIndexed { index, _ ->
+                    append("%T::class")
+                    val next = if (index == moduleClasses.lastIndex) "]" else ","
+                    append(next)
+                  }
+                }
+                addMember(builder.toString(), *moduleClasses.toTypedArray())
               }
             }.build()
           )
@@ -116,7 +127,7 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
               )
             }
           }
-          .addSuperinterface(AndroidInjector::class.asClassName().parameterizedBy(bindingTarget))
+          .addSuperinterface(AndroidInjector::class.asClassName().parameterizedBy(returnType))
           .addType(subcomponentFactory)
           .build()
 
@@ -143,7 +154,7 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
               .addAnnotation(IntoMap::class)
               .addAnnotation(
                 AnnotationSpec.builder(ClassKey::class)
-                  .addMember("%T::class", bindingTarget)
+                  .addMember("%T::class", returnType)
                   .build()
               )
               .returns(AndroidInjector.Factory::class.asClassName().parameterizedBy(STAR))
