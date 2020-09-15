@@ -290,6 +290,12 @@ internal fun PsiElement.requireFqName(
         module.findClassOrTypeAlias(importFqName, classReference)?.let { return it.fqNameSafe }
       }
 
+  // Check if it's a named import.
+  containingKtFile.importDirectives
+    .firstOrNull { classReference == it.importPath?.importedName?.asString() }
+    ?.importedFqName
+    ?.let { return it }
+
   // Everything else isn't supported.
   throw SheathCompilationException(
       "Couldn't resolve FqName $classReference for Psi element: $text",
@@ -368,3 +374,9 @@ fun KtCallableDeclaration.requireTypeReference(): KtTypeReference =
   typeReference ?: throw SheathCompilationException(
       "Couldn't obtain type reference.", element = this
   )
+
+fun KtUserType.isTypeParameter(): Boolean {
+  return parents.filterIsInstance<KtClassOrObject>().first().typeParameters.any {
+    it.textMatches(this)
+  }
+}
