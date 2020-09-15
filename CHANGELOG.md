@@ -2,6 +2,11 @@
 
 ## Next Version
 
+## 0.3.0 (2020-09-08)
+
+* Support named imports.
+* Support @Inject on constructors of classes with type parameters.
+
 ## 0.2.0 (2020-09-08)
 
 * Rework import resolution.
