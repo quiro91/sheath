@@ -2,6 +2,11 @@
 
 ## Next Version
 
+## 0.4.0 (2020-09-23)
+
+* Improve configuration caching
+* Support constructor injection for classes with bounded type parameters 
+
 ## 0.3.0 (2020-09-08)
 
 * Support named imports.
