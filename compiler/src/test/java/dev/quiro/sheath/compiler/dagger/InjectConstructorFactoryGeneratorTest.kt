@@ -1190,7 +1190,111 @@ public final class InjectClass_Factory<T> implements Factory<InjectClass<T>> {
         import javax.inject.Inject
         import javax.inject.Provider;
         
-        class InjectClass<T> @Inject constructor(private val prov: Provider<T>)
+        class InjectClass<T> @Inject constructor(prov: Provider<T>)
+        """
+    ) {
+      val constructor = classLoader.loadClass("com.squareup.test.InjectClass")
+        .factoryClass().declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+    }
+  }
+
+  @Test fun `a factory class is generated for generics with out modifier`() {
+    /*
+package com.squareup.test;
+
+import dagger.internal.Factory;
+import java.util.Map;
+import javax.annotation.Generated;
+import javax.inject.Provider;
+
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes"
+})
+public final class InjectClass_Factory implements Factory<InjectClass> {
+  private final Provider<Map<Class<? extends CharSequence>, Provider<String>>> delegatesProvider;
+
+  public InjectClass_Factory(
+      Provider<Map<Class<? extends CharSequence>, Provider<String>>> delegatesProvider) {
+    this.delegatesProvider = delegatesProvider;
+  }
+
+  @Override
+  public InjectClass get() {
+    return newInstance(delegatesProvider.get());
+  }
+
+  public static InjectClass_Factory create(
+      Provider<Map<Class<? extends CharSequence>, Provider<String>>> delegatesProvider) {
+    return new InjectClass_Factory(delegatesProvider);
+  }
+
+  public static InjectClass newInstance(
+      Map<Class<? extends CharSequence>, Provider<String>> delegates) {
+    return new InjectClass(delegates);
+  }
+}
+     */
+
+    compile(
+      """
+        package com.squareup.test
+        
+        import javax.inject.Inject
+        import javax.inject.Provider;
+        
+        class InjectClass @Inject constructor(
+          map: Map<Class<out CharSequence>, @JvmSuppressWildcards Provider<String>>
+        )
+        """
+    ) {
+      val constructor = classLoader.loadClass("com.squareup.test.InjectClass")
+        .factoryClass().declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+    }
+  }
+
+  @Test fun `a factory class is generated for type parameter which extends class`() {
+    /*
+package com.squareup.test;
+
+import dagger.internal.Factory;
+import javax.inject.Provider;
+
+public final class InjectClass_Factory<T extends CharSequence> implements Factory<InjectClass<T>> {
+    private final Provider<T> elementProvider;
+
+    public InjectClass_Factory(Provider<T> var1) {
+        this.elementProvider = var1;
+    }
+
+    public InjectClass<T> get() {
+        return newInstance((CharSequence)this.elementProvider.get());
+    }
+
+    public static <T extends CharSequence> InjectClass_Factory<T> create(Provider<T> var0) {
+        return new InjectClass_Factory(var0);
+    }
+
+    public static <T extends CharSequence> InjectClass<T> newInstance(T var0) {
+        return new InjectClass(var0);
+    }
+}
+     */
+
+    compile(
+      """
+        package com.squareup.test
+        
+        import javax.inject.Inject
+        import javax.inject.Provider
+        
+        class InjectClass<T : CharSequence> @Inject constructor(element: Provider<T>)
         """
     ) {
       val constructor = classLoader.loadClass("com.squareup.test.InjectClass")
