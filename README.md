@@ -16,7 +16,28 @@ Kotlin compiler plugins.
 
 ## Setup
 
-Coming soon
+The plugin consists of a Gradle plugin and Kotlin compiler plugin. The Gradle plugin automatically adds the Kotlin compiler plugin and annotation dependencies. It needs to be applied in all modules that either contribute classes to the dependency graph or merge them:
+
+```
+plugins {
+  id 'dev.quiro.sheath' version "${latest_version}"
+}
+```
+
+Or you can use the old way to apply a plugin:
+
+```
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath "dev.quiro.sheath:gradle-plugin:${latest_version}"
+  }
+}
+
+apply plugin: 'dev.quiro.sheath'
+```
 
 ## Performance
 
