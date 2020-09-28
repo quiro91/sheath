@@ -2,6 +2,11 @@
 
 ## Next Version
 
+## 0.4.1 (2020-09-28)
+
+* Fix absolute path being used in the plugin
+* Fix @ContributesAndroidInjector class names
+
 ## 0.4.0 (2020-09-23)
 
 * Improve configuration caching
