@@ -32,6 +32,7 @@ import dagger.multibindings.IntoMap
 import dev.quiro.sheath.compiler.codegen.PrivateCodeGenerator
 import dev.quiro.sheath.compiler.codegen.extractArrayOfClass
 import dev.quiro.sheath.compiler.codegen.extractSingleParameter
+import dev.quiro.sheath.compiler.codegen.requireFqName
 import dev.quiro.sheath.compiler.codegen.requireTypeReference
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.name.FqName
@@ -73,7 +74,10 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
     val returnType = function.requireTypeReference()
       .requireTypeName(module)
       .withJvmSuppressWildcardsIfNeeded(function)
-    val bindingTargetName = function.requireTypeReference().text
+    val bindingTargetName = function.requireTypeReference()
+      .requireFqName(module)
+      .shortName()
+      .asString()
     val className = "${clazz.generateClassName()}_${function.name!!.capitalize()}"
     val factoryClass = ClassName(packageName, className)
     val contributesAndroidInjector = function.findAnnotation(daggerContributesAndroidInjector)!!

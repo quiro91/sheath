@@ -756,6 +756,73 @@ public abstract class DaggerModule1_BindMyFragment {
     }
   }
 
+  @Test
+  fun `two bind classes are generated for @ContributesAndroidInjector with named imports`() {
+    compile(
+      listOf(
+        """
+        package a.b.c
+        
+        class MyFragment
+        """,
+        """
+        package d.e.f
+        
+        class MyFragment
+        """,
+        """
+        package com.squareup.test
+        
+        import a.b.c.MyFragment
+        import d.e.f.MyFragment as OtherFragment
+        
+        @dagger.Module
+        abstract class DaggerModule1 {
+          @dagger.android.ContributesAndroidInjector
+          abstract fun bindMyFragment(): MyFragment
+          
+          @dagger.android.ContributesAndroidInjector
+          abstract fun bindOtherFragment(): OtherFragment
+        }
+        """
+      )
+    ) {
+      val subcomponentClass = daggerModule1.contributesAndroidInjector("BindOtherFragment")
+      assertThat(subcomponentClass.declaredConstructors).hasLength(1)
+
+      subcomponentClass.isAnnotationPresent(Module::class.java)
+      val moduleAnnotation = subcomponentClass.getAnnotation(Module::class.java)
+      assertThat(moduleAnnotation.subcomponents.single().java.name).isEqualTo(
+        "com.squareup.test.DaggerModule1_BindOtherFragment\$MyFragmentSubcomponent"
+      )
+
+      val bindMethod = subcomponentClass.declaredMethods.single()
+      assertThat(bindMethod.isAbstract).isTrue()
+      assertThat(bindMethod.isAnnotationPresent(Binds::class.java)).isTrue()
+      assertThat(bindMethod.isAnnotationPresent(IntoMap::class.java)).isTrue()
+      assertThat(bindMethod.isAnnotationPresent(ClassKey::class.java)).isTrue()
+      val classKeyAnnotation = bindMethod.getAnnotation(ClassKey::class.java)
+      assertThat(classKeyAnnotation.value.simpleName).isEqualTo("MyFragment")
+      assertThat(bindMethod.returnType).isEqualTo(AndroidInjector.Factory::class.java)
+      val parameter = bindMethod.parameters.single()
+      assertThat(parameter.type.name).isEqualTo(
+        "com.squareup.test.DaggerModule1_BindOtherFragment\$MyFragmentSubcomponent\$Factory"
+      )
+
+      val subcomponentInterface = classLoader.loadClass(
+        "com.squareup.test.DaggerModule1_BindOtherFragment\$MyFragmentSubcomponent"
+      )
+      val subcomponentFactoryInterface = classLoader.loadClass(
+        "com.squareup.test.DaggerModule1_BindOtherFragment\$MyFragmentSubcomponent\$Factory"
+      )
+      assertThat(subcomponentInterface.isAnnotationPresent(Subcomponent::class.java)).isTrue()
+      assertThat(subcomponentInterface.extends(AndroidInjector::class.java)).isTrue()
+      assertThat(subcomponentFactoryInterface.isAnnotationPresent(Subcomponent.Factory::class.java))
+        .isTrue()
+      assertThat(subcomponentFactoryInterface.extends(AndroidInjector.Factory::class.java)).isTrue()
+    }
+  }
+
   private fun compile(
     source: String,
     block: Result.() -> Unit = { }
