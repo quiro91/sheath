@@ -115,7 +115,7 @@ internal fun Class<*>.membersInjector(): Class<*> {
 
 @OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.contributesAndroidInjector(target: String): Class<*> {
-  return classLoader.loadClass("${`package`.name}.DaggerModule1_Bind$target")
+  return classLoader.loadClass("${`package`.name}.DaggerModule1_$target")
 }
 
 internal infix fun Class<*>.extends(other: Class<*>): Boolean = other.isAssignableFrom(this)

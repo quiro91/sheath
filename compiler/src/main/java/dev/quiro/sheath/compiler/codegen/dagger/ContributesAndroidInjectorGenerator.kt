@@ -74,7 +74,7 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
       .requireTypeName(module)
       .withJvmSuppressWildcardsIfNeeded(function)
     val bindingTargetName = function.requireTypeReference().text
-    val className = "${clazz.generateClassName()}_Bind$bindingTargetName"
+    val className = "${clazz.generateClassName()}_${function.name!!.capitalize()}"
     val factoryClass = ClassName(packageName, className)
     val contributesAndroidInjector = function.findAnnotation(daggerContributesAndroidInjector)!!
     val moduleClasses = contributesAndroidInjector.extractSingleParameter()
