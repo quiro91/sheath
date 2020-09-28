@@ -2,6 +2,10 @@
 
 ## Next Version
 
+## 0.4.2 (2020-09-28)
+
+* Fix resolution of return type in @ContributesAndroidInjector
+
 ## 0.4.1 (2020-09-28)
 
 * Fix absolute path being used in the plugin
