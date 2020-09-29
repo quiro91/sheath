@@ -6,6 +6,8 @@ package dev.quiro.sheath.compiler.dagger
 
 object Factory
 
+object Date
+
 abstract class OuterClass constructor(innerClass: InnerClass) {
   class InnerClass
 }
