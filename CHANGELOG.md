@@ -2,6 +2,10 @@
 
 ## Next Version
 
+## 0.4.3 (2020-09-29)
+
+* Fix resolution of named imports clashing with other imports.
+
 ## 0.4.2 (2020-09-28)
 
 * Fix resolution of return type in @ContributesAndroidInjector
