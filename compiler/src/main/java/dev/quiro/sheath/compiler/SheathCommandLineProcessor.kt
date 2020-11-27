@@ -22,22 +22,22 @@ class SheathCommandLineProcessor : CommandLineProcessor {
   override val pluginId: String = "dev.quiro.sheath.compiler"
 
   override val pluginOptions: Collection<AbstractCliOption> = listOf(
-      CliOption(
-          optionName = srcGenDirName,
-          valueDescription = "<file-path>",
-          description = "Path to directory in which Sheath specific code should be generated",
-          required = true,
-          allowMultipleOccurrences = false
-      ),
-      CliOption(
-          optionName = generateDaggerFactoriesName,
-          valueDescription = "<true|false>",
-          description = "Whether Sheath should generate Factory classes that the Dagger " +
-              "annotation processor would generate for @Provides methods and @Inject " +
-              "constructors.",
-          required = false,
-          allowMultipleOccurrences = false
-      )
+    CliOption(
+      optionName = srcGenDirName,
+      valueDescription = "<file-path>",
+      description = "Path to directory in which Sheath specific code should be generated",
+      required = true,
+      allowMultipleOccurrences = false
+    ),
+    CliOption(
+      optionName = generateDaggerFactoriesName,
+      valueDescription = "<true|false>",
+      description = "Whether Anvil should generate Factory classes that the Dagger " +
+          "annotation processor would generate for @Provides methods and @Inject " +
+          "constructors.",
+      required = false,
+      allowMultipleOccurrences = false
+    )
   )
 
   override fun processOption(

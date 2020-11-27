@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import dev.quiro.sheath.compiler.injectClass
 import dev.quiro.sheath.compiler.isStatic
 import dev.quiro.sheath.compiler.membersInjector
+import dev.quiro.sheath.compiler.newInstanceNoArgs
 import com.tschuchort.compiletesting.KotlinCompilation.Result
 import dagger.Lazy
 import dagger.MembersInjector
@@ -166,6 +167,7 @@ public final class InjectClass_MembersInjector implements MembersInjector<Inject
               Provider::class.java, Provider::class.java
           )
 
+      @Suppress("RedundantLambdaArrow")
       val membersInjectorInstance = constructor
           .newInstance(
               Provider { "a" }, Provider<CharSequence> { "b" }, Provider { listOf("c") },
@@ -174,10 +176,10 @@ public final class InjectClass_MembersInjector implements MembersInjector<Inject
           )
           as MembersInjector<Any>
 
-      val injectInstanceConstructor = injectClass.newInstance()
+      val injectInstanceConstructor = injectClass.newInstanceNoArgs()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = injectClass.newInstance()
+      val injectInstanceStatic = injectClass.newInstanceNoArgs()
 
       membersInjector.staticInjectMethod("string")
           .invoke(null, injectInstanceStatic, "a")
@@ -308,10 +310,10 @@ public final class InjectClass_MembersInjector implements MembersInjector<Inject
           )
           as MembersInjector<Any>
 
-      val injectInstanceConstructor = injectClass.newInstance()
+      val injectInstanceConstructor = injectClass.newInstanceNoArgs()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = injectClass.newInstance()
+      val injectInstanceStatic = injectClass.newInstanceNoArgs()
 
       membersInjector.staticInjectMethod("string")
           .invoke(null, injectInstanceStatic, "a")
@@ -420,10 +422,10 @@ public final class InjectClass_MembersInjector implements MembersInjector<Inject
           .newInstance(Provider { File("") }, Provider { File("").toPath() })
           as MembersInjector<Any>
 
-      val injectInstanceConstructor = injectClass.newInstance()
+      val injectInstanceConstructor = injectClass.newInstanceNoArgs()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = injectClass.newInstance()
+      val injectInstanceStatic = injectClass.newInstanceNoArgs()
 
       membersInjector.staticInjectMethod("file")
           .invoke(null, injectInstanceStatic, File(""))
@@ -542,10 +544,10 @@ public final class OuterClass_InjectClass_MembersInjector implements MembersInje
           .newInstance(Provider { "a" }, Provider<CharSequence> { "b" }, Provider { listOf("c") })
           as MembersInjector<Any>
 
-      val injectInstanceConstructor = injectClass.newInstance()
+      val injectInstanceConstructor = injectClass.newInstanceNoArgs()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = injectClass.newInstance()
+      val injectInstanceStatic = injectClass.newInstanceNoArgs()
 
       membersInjector.staticInjectMethod("string")
           .invoke(null, injectInstanceStatic, "a")
@@ -675,7 +677,6 @@ public final class InjectClass_MembersInjector<T, U, V> implements MembersInject
     }
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   private fun Class<*>.staticInjectMethod(memberName: String): Method {
     // We can't check the @InjectedFieldSignature annotation unfortunately, because it has class
     // retention.
@@ -684,11 +685,12 @@ public final class InjectClass_MembersInjector<T, U, V> implements MembersInject
         .single { it.name == "inject${memberName.capitalize(US)}" }
   }
 
+  @Suppress("CHANGING_ARGUMENTS_EXECUTION_ORDER_FOR_NAMED_VARARGS")
   private fun compile(
-    source: String,
+    vararg sources: String,
     block: Result.() -> Unit = { }
   ): Result = dev.quiro.sheath.compiler.compile(
-      source = source,
+      sources = sources,
       enableDaggerAnnotationProcessor = useDagger,
       generateDaggerFactories = !useDagger,
       block = block

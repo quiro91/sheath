@@ -14,6 +14,8 @@ import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
+import org.jetbrains.kotlin.descriptors.findClassAcrossModuleDependencies
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.has
@@ -21,11 +23,12 @@ import org.jetbrains.kotlin.platform.jvm.JvmPlatform
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.resolve.DescriptorUtils
-import org.jetbrains.kotlin.resolve.constants.ArrayValue
 import org.jetbrains.kotlin.resolve.constants.ConstantValue
 import org.jetbrains.kotlin.resolve.constants.KClassValue
+import org.jetbrains.kotlin.resolve.constants.KClassValue.Value.NormalClass
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
+import org.jetbrains.kotlin.types.ErrorType
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import org.jetbrains.org.objectweb.asm.Type
@@ -45,8 +48,6 @@ internal val providerFqName = FqName(Provider::class.java.canonicalName)
 internal val jvmSuppressWildcardsFqName = FqName(JvmSuppressWildcards::class.java.canonicalName)
 
 internal val daggerDoubleCheckFqNameString = DoubleCheck::class.java.canonicalName
-
-internal const val MODULE_PACKAGE_PREFIX = "anvil.module"
 
 internal fun ClassDescriptor.annotationOrNull(
   annotationFqName: FqName,
@@ -86,9 +87,7 @@ internal fun ConstantValue<*>.toType(
   typeMapper: KotlinTypeMapper
 ): Type {
   // This is a Kotlin class with the actual type as argument: KClass<OurType>
-  val kClassType = getType(module)
-  return kClassType.argumentType()
-      .asmType(typeMapper)
+  return argumentType(module).asmType(typeMapper)
 }
 
 // When the Kotlin type is of the form: KClass<OurType>.
@@ -101,20 +100,33 @@ internal fun AnnotationDescriptor.getAnnotationValue(key: String): ConstantValue
 
 internal fun AnnotationDescriptor.scope(module: ModuleDescriptor): ClassDescriptor {
   val kClassValue = requireNotNull(getAnnotationValue("scope")) as KClassValue
-  return kClassValue.getType(module)
-      .argumentType()
-      .classDescriptorForType()
+  return kClassValue.argumentType(module).classDescriptorForType()
 }
 
-internal fun AnnotationDescriptor.replaces(module: ModuleDescriptor): List<ClassDescriptor> {
-  return (getAnnotationValue("replaces") as? ArrayValue)
-      ?.value
-      ?.map {
-        it.getType(module)
-            .argumentType()
-            .classDescriptorForType()
-      }
-      ?: emptyList()
+internal fun ConstantValue<*>.argumentType(module: ModuleDescriptor): KotlinType {
+  val argumentType = getType(module).argumentType()
+  if (argumentType !is ErrorType) return argumentType
+
+  // Handle inner classes explicitly. When resolving the Kotlin type of inner class from
+  // dependencies the compiler might fail. It tries to load my.package.Class$Inner and fails
+  // whereas is should load my.package.Class.Inner.
+  val normalClass = this.value
+  if (normalClass !is NormalClass) return argumentType
+
+  val classId = normalClass.value.classId
+
+  return module
+      .findClassAcrossModuleDependencies(
+          classId = ClassId(
+              classId.packageFqName,
+              FqName(classId.relativeClassName.asString().replace('$', '.')),
+              false
+          )
+      )
+      ?.defaultType
+      ?: throw SheathCompilationException(
+          "Couldn't resolve class across module dependencies for class ID: $classId"
+      )
 }
 
 internal fun KtClassOrObject.generateClassName(

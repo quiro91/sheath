@@ -1,7 +1,7 @@
 def generatedDirPath = 'generated/sources/build-properties/kotlin/main'
 
 sourceSets {
-  test.java.srcDirs += "$buildDir/$generatedDirPath"
+  main.java.srcDirs += "$buildDir/$generatedDirPath"
 }
 
 def generateBuildProperties = project.tasks.register('generateBuildProperties') {
@@ -14,13 +14,13 @@ def generateBuildProperties = project.tasks.register('generateBuildProperties') 
   doLast {
     buildPropertiesFile.parentFile.mkdirs()
     buildPropertiesFile.write """\
-      package com.squareup.anvil.compiler
+      package dev.quiro.sheath.compiler
       
       internal const val USE_IR = ${rootProject.ext.kotlinUseIR}
     """.stripIndent()
   }
 }
 
-tasks.named("compileTestKotlin").configure {
+tasks.named("compileKotlin").configure {
   it.dependsOn generateBuildProperties
 }

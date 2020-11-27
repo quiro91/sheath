@@ -11,23 +11,7 @@ import java.io.File
 import java.util.Locale.US
 
 internal fun compile(
-  source: String,
-  enableDaggerAnnotationProcessor: Boolean = false,
-  enableDaggerAndroidAnnotationProcessor: Boolean = false,
-  generateDaggerFactories: Boolean = false,
-  block: Result.() -> Unit = { }
-): Result {
-  return compile(
-    sourceFiles = listOf(source),
-    enableDaggerAnnotationProcessor = enableDaggerAnnotationProcessor,
-    enableDaggerAndroidAnnotationProcessor = enableDaggerAndroidAnnotationProcessor,
-    generateDaggerFactories = generateDaggerFactories,
-    block = block
-  )
-}
-
-internal fun compile(
-  sourceFiles: List<String>,
+  vararg sources: String,
   enableDaggerAnnotationProcessor: Boolean = false,
   enableDaggerAndroidAnnotationProcessor: Boolean = false,
   generateDaggerFactories: Boolean = false,
@@ -36,7 +20,7 @@ internal fun compile(
   return KotlinCompilation()
       .apply {
         compilerPlugins = listOf(SheathComponentRegistrar())
-        useIR = false
+        useIR = USE_IR
         inheritClassPath = true
         jvmTarget = JvmTarget.JVM_1_8.description
 
@@ -64,7 +48,7 @@ internal fun compile(
             )
         )
 
-        sources = sourceFiles.mapIndexed { index, content ->
+        this.sources = sources.mapIndexed { index, content ->
           val name =
             "${workingDir.absolutePath}/sources/src/main/java/com/squareup/test/Source$index.kt"
           File(name).parentFile.mkdirs()
@@ -84,7 +68,6 @@ internal val Result.innerModule: Class<*>
 internal val Result.injectClass: Class<*>
   get() = classLoader.loadClass("com.squareup.test.InjectClass")
 
-@OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.moduleFactoryClass(
   providerMethodName: String,
   companion: Boolean = false
@@ -98,14 +81,12 @@ internal fun Class<*>.moduleFactoryClass(
   )
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.factoryClass(): Class<*> {
   val enclosingClassString = enclosingClass?.let { "${it.simpleName}_" } ?: ""
 
   return classLoader.loadClass("${`package`.name}.$enclosingClassString${simpleName}_Factory")
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.membersInjector(): Class<*> {
   val enclosingClassString = enclosingClass?.let { "${it.simpleName}_" } ?: ""
 
@@ -113,7 +94,6 @@ internal fun Class<*>.membersInjector(): Class<*> {
       "$enclosingClassString${simpleName}_MembersInjector")
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 internal fun Class<*>.contributesAndroidInjector(target: String): Class<*> {
   return classLoader.loadClass("${`package`.name}.DaggerModule1_$target")
 }
