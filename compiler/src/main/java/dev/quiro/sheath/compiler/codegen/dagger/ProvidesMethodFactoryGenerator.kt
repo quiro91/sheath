@@ -6,10 +6,12 @@ import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
 import dev.quiro.sheath.compiler.codegen.asArgumentList
 import dev.quiro.sheath.compiler.codegen.asClassName
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
+import dev.quiro.sheath.compiler.codegen.findAnnotation
 import dev.quiro.sheath.compiler.codegen.functions
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.isNullable
 import dev.quiro.sheath.compiler.codegen.mapToParameter
+import dev.quiro.sheath.compiler.codegen.properties
 import dev.quiro.sheath.compiler.codegen.requireFqName
 import dev.quiro.sheath.compiler.codegen.requireTypeName
 import dev.quiro.sheath.compiler.codegen.requireTypeReference
@@ -32,10 +34,11 @@ import dagger.internal.Factory
 import dagger.internal.Preconditions
 import dev.quiro.sheath.compiler.SheathCompilationException
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.psiUtil.parents
 import java.io.File
 import java.util.Locale.US
@@ -73,37 +76,65 @@ internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
               .forEach { function ->
                 generateFactoryClass(codeGenDir, module, clazz, function)
               }
+
+          clazz
+              .properties(includeCompanionObjects = true)
+              .asSequence()
+              .filter { property ->
+                // Must be '@get:Provides'.
+                property.findAnnotation(daggerProvidesFqName)?.useSiteTarget?.text == "get"
+              }
+              .forEach { property ->
+                generateFactoryClass(codeGenDir, module, clazz, property)
+              }
         }
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   private fun generateFactoryClass(
     codeGenDir: File,
     module: ModuleDescriptor,
     clazz: KtClassOrObject,
-    function: KtNamedFunction
+    declaration: KtCallableDeclaration
   ): GeneratedFile {
-    val isCompanionObject = function.parents
+    val isCompanionObject = declaration.parents
         .filterIsInstance<KtObjectDeclaration>()
         .firstOrNull()
         ?.isCompanion()
         ?: false
     val isObject = isCompanionObject || clazz is KtObjectDeclaration
 
+    val isProperty = declaration is KtProperty
+
     val packageName = clazz.containingKtFile.packageFqName.asString()
-    val className = "${clazz.generateClassName()}_" +
-        (if (isCompanionObject) "Companion_" else "") +
-        "${function.requireFqName().shortName().asString().capitalize(US)}Factory"
-    val functionName = function.nameAsSafeName.asString()
+    val className = buildString {
+      append(clazz.generateClassName())
+      append('_')
+      if (isCompanionObject) {
+        append("Companion_")
+      }
+      if (isProperty) {
+        append("Get")
+      }
+      append(declaration.requireFqName().shortName().asString().capitalize(US))
+      append("Factory")
+    }
 
-    val parameters = function.valueParameters.mapToParameter(module)
+    val callableName = declaration.nameAsSafeName.asString()
 
-    val returnType = function.requireTypeReference().requireTypeName(module)
-        .withJvmSuppressWildcardsIfNeeded(function)
-    val returnTypeIsNullable = function.typeReference?.isNullable() ?: false
+    val parameters = declaration.valueParameters.mapToParameter(module)
+
+    val returnType = declaration.requireTypeReference().requireTypeName(module)
+        .withJvmSuppressWildcardsIfNeeded(declaration)
+    val returnTypeIsNullable = declaration.typeReference?.isNullable() ?: false
 
     val factoryClass = ClassName(packageName, className)
     val moduleClass = clazz.asClassName()
+
+    val byteCodeFunctionName = if (isProperty) {
+      "get" + callableName.capitalize(US)
+    } else {
+      callableName
+    }
 
     val content = FileSpec.builder(packageName, className)
         .apply {
@@ -158,7 +189,7 @@ internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
                             asProvider = true,
                             includeModule = !isObject
                         )
-                        addStatement("return $functionName($argumentList)")
+                        addStatement("return $byteCodeFunctionName($argumentList)")
                       }
                       .build()
               )
@@ -191,7 +222,7 @@ internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
                             .build()
                     )
                     .addFunction(
-                        FunSpec.builder(functionName)
+                        FunSpec.builder(byteCodeFunctionName)
                             .jvmStatic()
                             .apply {
                               if (!isObject) {
@@ -204,30 +235,35 @@ internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
                                     type = parameter.originalTypeName
                                 )
                               }
-                              val argumentsWithoutModule = parameters.joinToString { it.name }
+
+                              val argumentsWithoutModule = if (isProperty) {
+                                ""
+                              } else {
+                                "(${parameters.joinToString { it.name }})"
+                              }
 
                               when {
                                 isObject && returnTypeIsNullable ->
                                   addStatement(
-                                      "return %T.$functionName($argumentsWithoutModule)",
+                                      "return %T.$callableName$argumentsWithoutModule",
                                       moduleClass
                                   )
                                 isObject && !returnTypeIsNullable ->
                                   addStatement(
-                                      "return %T.checkNotNull(%T.$functionName" +
-                                          "($argumentsWithoutModule), %S)",
+                                      "return %T.checkNotNull(%T.$callableName" +
+                                          "$argumentsWithoutModule, %S)",
                                       Preconditions::class,
                                       moduleClass,
                                       "Cannot return null from a non-@Nullable @Provides method"
                                   )
                                 !isObject && returnTypeIsNullable ->
                                   addStatement(
-                                      "return module.$functionName($argumentsWithoutModule)"
+                                      "return module.$callableName$argumentsWithoutModule"
                                   )
                                 !isObject && !returnTypeIsNullable ->
                                   addStatement(
-                                      "return %T.checkNotNull(module.$functionName" +
-                                          "($argumentsWithoutModule), %S)",
+                                      "return %T.checkNotNull(module.$callableName" +
+                                          "$argumentsWithoutModule, %S)",
                                       Preconditions::class,
                                       "Cannot return null from a non-@Nullable @Provides method"
                                   )

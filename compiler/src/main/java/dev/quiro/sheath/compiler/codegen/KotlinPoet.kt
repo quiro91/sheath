@@ -62,13 +62,15 @@ internal fun ClassDescriptor.asClassName(): ClassName =
   )
 
 internal fun FqName.asClassName(module: ModuleDescriptor): ClassName {
-  try {
+  val segments = pathSegments().map { it.asString() }
+
+  // If the first sentence case is not the last segment of the path it becomes ambiguous,
+  // for example, com.Foo.Bar could be a inner class Bar or an unconventional package com.Foo.
+  val canGuessClassName = segments.indexOfFirst { it[0].isUpperCase() } == segments.size - 1
+  if (canGuessClassName) {
     return ClassName.bestGuess(asString())
-  } catch (ignored: IllegalArgumentException) {
-    // Probably lowercase class. Try to resolve the class below.
   }
 
-  val segments = pathSegments().map { it.asString() }
   for (index in (segments.size - 1) downTo 1) {
     val packageSegments = segments.subList(0, index)
     val classSegments = segments.subList(index, segments.size)
@@ -247,20 +249,10 @@ internal fun <T : KtCallableDeclaration> TypeName.withJvmSuppressWildcardsIfNeed
 
   return when {
     hasJvmSuppressWildcards || isGenericType -> this.jvmSuppressWildcards()
-    isFunctionType -> this.jvmSuppressWildcardsKt31734()
+    isFunctionType -> this.jvmSuppressWildcards()
     else -> this
   }
 }
-
-// TODO: remove with Kotlin 1.4.
-// Notice the empty member. Instead of generating `@JvmSuppressWildcards Type` it generates
-// `@JvmSuppressWildcards() Type`. This is necessary to avoid KT-31734 where the type is a function.
-private fun TypeName.jvmSuppressWildcardsKt31734() =
-  copy(
-      annotations = this.annotations + AnnotationSpec.builder(JvmSuppressWildcards::class)
-          .addMember("")
-          .build()
-  )
 
 internal fun List<Parameter>.asArgumentList(
   asProvider: Boolean,

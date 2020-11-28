@@ -88,11 +88,12 @@ class ComponentDetectorCheckTest {
     }
   }
 
+  @Suppress("CHANGING_ARGUMENTS_EXECUTION_ORDER_FOR_NAMED_VARARGS")
   private fun compile(
-    source: String,
+    vararg sources: String,
     block: Result.() -> Unit = { }
   ): Result = dev.quiro.sheath.compiler.compile(
-      source = source,
+      sources = sources,
       generateDaggerFactories = true,
       block = block
   )

@@ -614,13 +614,12 @@ public abstract class DaggerModule1_BindMyFragment {
      */
 
     compile(
-      listOf(
-        """
+      """
         package com.squareup.test.fragments
         
         class MyFragment
         """,
-        """
+      """
         package com.squareup.test
 
         import com.squareup.test.fragments.MyFragment
@@ -631,7 +630,6 @@ public abstract class DaggerModule1_BindMyFragment {
           abstract fun bindMyFragment(): MyFragment
         }
         """
-      )
     ) {
       val subcomponentClass = daggerModule1.contributesAndroidInjector("BindMyFragment")
       assertThat(subcomponentClass.declaredConstructors).hasLength(1)
@@ -696,14 +694,13 @@ public abstract class DaggerModule1_BindMyFragment {
      */
 
     compile(
-      listOf(
-        """
+      """
         package com.squareup.test.modules
         
         @dagger.Module
         class MyModule
         """,
-        """
+      """
         package com.squareup.test
         
         import com.squareup.test.modules.MyModule
@@ -716,7 +713,6 @@ public abstract class DaggerModule1_BindMyFragment {
           abstract fun bindMyFragment(): MyFragment
         }
         """
-      )
     ) {
       val subcomponentClass = daggerModule1.contributesAndroidInjector("BindMyFragment")
       assertThat(subcomponentClass.declaredConstructors).hasLength(1)
@@ -759,18 +755,17 @@ public abstract class DaggerModule1_BindMyFragment {
   @Test
   fun `two bind classes are generated for @ContributesAndroidInjector with named imports`() {
     compile(
-      listOf(
-        """
+      """
         package a.b.c
         
         class MyFragment
         """,
-        """
+      """
         package d.e.f
         
         class MyFragment
         """,
-        """
+      """
         package com.squareup.test
         
         import a.b.c.MyFragment
@@ -785,7 +780,6 @@ public abstract class DaggerModule1_BindMyFragment {
           abstract fun bindOtherFragment(): OtherFragment
         }
         """
-      )
     ) {
       val subcomponentClass = daggerModule1.contributesAndroidInjector("BindOtherFragment")
       assertThat(subcomponentClass.declaredConstructors).hasLength(1)
@@ -824,21 +818,10 @@ public abstract class DaggerModule1_BindMyFragment {
   }
 
   private fun compile(
-    source: String,
+    vararg sources: String,
     block: Result.() -> Unit = { }
   ): Result = dev.quiro.sheath.compiler.compile(
-    source,
-    enableDaggerAnnotationProcessor = useDagger,
-    enableDaggerAndroidAnnotationProcessor = useDagger,
-    generateDaggerFactories = !useDagger,
-    block = block
-  )
-
-  private fun compile(
-    sources: List<String>,
-    block: Result.() -> Unit = { }
-  ): Result = dev.quiro.sheath.compiler.compile(
-    sources,
+    *sources,
     enableDaggerAnnotationProcessor = useDagger,
     enableDaggerAndroidAnnotationProcessor = useDagger,
     generateDaggerFactories = !useDagger,

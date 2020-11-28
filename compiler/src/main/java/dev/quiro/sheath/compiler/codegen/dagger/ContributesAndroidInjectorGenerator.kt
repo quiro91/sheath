@@ -63,7 +63,6 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
       .toList()
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   private fun generateInjectorClass(
     codeGenDir: File,
     module: ModuleDescriptor,

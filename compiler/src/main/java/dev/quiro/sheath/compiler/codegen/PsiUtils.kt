@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtNullableType
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeArgumentList
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtUserType
@@ -251,18 +252,31 @@ internal fun PsiElement.requireFqName(
   // First look in the imports for the reference name. If the class is imported, then we know the
   // fully qualified name.
   importPaths
-      .filter { it.alias == null }
-      .firstOrNull {
-        it.fqName.shortName().asString() == classReference
+      .filter { it.alias == null && it.fqName.shortName().asString() == classReference }
+      .also { matchingImportPaths ->
+        when {
+          matchingImportPaths.size == 1 ->
+            return matchingImportPaths[0].fqName
+          matchingImportPaths.size > 1 ->
+            return matchingImportPaths.first { importPath ->
+              module.resolveClassByFqName(importPath.fqName, FROM_BACKEND) != null
+            }.fqName
+        }
       }
-      ?.let { return it.fqName }
 
   importPaths
-      .filter { it.alias == null }
-      .firstOrNull {
-        it.fqName.shortName().asString() == classReferenceOuter
+      .filter { it.alias == null && it.fqName.shortName().asString() == classReferenceOuter }
+      .also { matchingImportPaths ->
+        when {
+          matchingImportPaths.size == 1 ->
+            return FqName("${matchingImportPaths[0].fqName.parent()}.$classReference")
+          matchingImportPaths.size > 1 ->
+            return matchingImportPaths.first { importPath ->
+              val fqName = FqName("${importPath.fqName.parent()}.$classReference")
+              module.resolveClassByFqName(fqName, FROM_BACKEND) != null
+            }.fqName
+        }
       }
-      ?.let { return FqName("${it.fqName.parent()}.$classReference") }
 
   // If there is no import, then try to resolve the class with the same package as this file.
   module.findClassOrTypeAlias(containingKtFile.packageFqName, classReference)
@@ -301,9 +315,9 @@ internal fun PsiElement.requireFqName(
 
   // Check if it's a named import.
   containingKtFile.importDirectives
-    .firstOrNull { classReference == it.importPath?.importedName?.asString() }
-    ?.importedFqName
-    ?.let { return it }
+      .firstOrNull { classReference == it.importPath?.importedName?.asString() }
+      ?.importedFqName
+      ?.let { return it }
 
   // Everything else isn't supported.
   throw SheathCompilationException(
@@ -354,15 +368,18 @@ internal fun ModuleDescriptor.findClassOrTypeAlias(
 
 internal fun KtClassOrObject.functions(
   includeCompanionObjects: Boolean
-): List<KtNamedFunction> {
+): List<KtNamedFunction> = classBodies(includeCompanionObjects).flatMap { it.functions }
+
+internal fun KtClassOrObject.properties(
+  includeCompanionObjects: Boolean
+): List<KtProperty> = classBodies(includeCompanionObjects).flatMap { it.properties }
+
+private fun KtClassOrObject.classBodies(includeCompanionObjects: Boolean): List<KtClassBody> {
   val elements = children.toMutableList()
   if (includeCompanionObjects) {
     elements += companionObjects.flatMap { it.children.toList() }
   }
-
-  return elements
-      .filterIsInstance<KtClassBody>()
-      .flatMap { it.functions }
+  return elements.filterIsInstance<KtClassBody>()
 }
 
 fun KtTypeReference.isNullable(): Boolean = typeElement is KtNullableType
@@ -402,7 +419,7 @@ fun KtUserType.isTypeParameter(): Boolean {
 
 fun KtUserType.findExtendsBound(): List<FqName> {
   return parents.filterIsInstance<KtClassOrObject>()
-    .first()
-    .typeParameters
-    .mapNotNull { it.fqName }
+      .first()
+      .typeParameters
+      .mapNotNull { it.fqName }
 }
