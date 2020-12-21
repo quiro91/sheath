@@ -2,6 +2,11 @@
 
 ## Next Version
 
+## 0.5.0 (2020-12-21)
+
+* Support uppercase functions with the same name of a class.
+* Support Kotlin 1.4.20
+
 ## 0.4.3 (2020-09-29)
 
 * Fix resolution of named imports clashing with other imports.
