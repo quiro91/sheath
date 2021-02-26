@@ -1,0 +1,9 @@
+apply plugin: 'org.jetbrains.kotlin.jvm'
+apply plugin: 'dev.quiro.sheath'
+
+dependencies {
+  implementation deps.dagger2.dagger
+  testImplementation deps.junit
+  testImplementation deps.kotlin.test
+  testImplementation deps.truth
+}

@@ -9,8 +9,8 @@ on:
 jobs:
   test-ubuntu:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    continue-on-error: ${{ startsWith(matrix.kotlin-version, '1.4.3') }}
+    timeout-minutes: 25
+    continue-on-error: ${{ startsWith(matrix.kotlin-version, '1.5') }}
 
     strategy:
       # Run all tasks, even if some fail. Note that they don't share an output, some tasks overlap
@@ -18,7 +18,7 @@ jobs:
       # solution.
       fail-fast: false
       matrix:
-        kotlin-version: [1.4.20]
+        kotlin-version: [1.4.30]
 
     steps:
       - uses: actions/checkout@v2
@@ -41,7 +41,7 @@ jobs:
 
   test-ubuntu-ir:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     continue-on-error: true
 
     steps:
@@ -65,7 +65,7 @@ jobs:
 
   test-windows:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v2
@@ -120,7 +120,7 @@ jobs:
       # solution.
       fail-fast: false
       matrix:
-        kotlin-version: [1.4.20]
+        kotlin-version: [1.4.30]
 
     steps:
       - uses: actions/checkout@v2

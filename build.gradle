@@ -67,7 +67,7 @@ subprojects {
     kotlinOptions {
       jvmTarget = JavaVersion.VERSION_1_8
       useIR = rootProject.ext.kotlinUseIR
-      allWarningsAsErrors = true
+      allWarningsAsErrors = rootProject.ext.ci
     }
   }
 
@@ -84,3 +84,4 @@ subprojects {
 task clean(type: Delete) {
   delete rootProject.buildDir
 }
+

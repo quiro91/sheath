@@ -10,10 +10,6 @@ import org.jetbrains.kotlin.config.CompilerConfigurationKey
 internal const val srcGenDirName = "src-gen-dir"
 internal val srcGenDirKey = CompilerConfigurationKey.create<String>("sheath $srcGenDirName")
 
-internal const val generateDaggerFactoriesName = "generate-dagger-factories"
-internal val generateDaggerFactoriesKey =
-  CompilerConfigurationKey.create<Boolean>("sheath $generateDaggerFactoriesName")
-
 /**
  * Parses arguments from the Gradle plugin for the compiler plugin.
  */
@@ -28,15 +24,6 @@ class SheathCommandLineProcessor : CommandLineProcessor {
       description = "Path to directory in which Sheath specific code should be generated",
       required = true,
       allowMultipleOccurrences = false
-    ),
-    CliOption(
-      optionName = generateDaggerFactoriesName,
-      valueDescription = "<true|false>",
-      description = "Whether Anvil should generate Factory classes that the Dagger " +
-          "annotation processor would generate for @Provides methods and @Inject " +
-          "constructors.",
-      required = false,
-      allowMultipleOccurrences = false
     )
   )
 
@@ -47,8 +34,6 @@ class SheathCommandLineProcessor : CommandLineProcessor {
   ) {
     when (option.optionName) {
       srcGenDirName -> configuration.put(srcGenDirKey, value)
-      generateDaggerFactoriesName ->
-        configuration.put(generateDaggerFactoriesKey, value.toBoolean())
     }
   }
 }

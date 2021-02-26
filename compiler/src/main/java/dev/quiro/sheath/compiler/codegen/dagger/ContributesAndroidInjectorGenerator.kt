@@ -1,18 +1,5 @@
 package dev.quiro.sheath.compiler.codegen.dagger
 
-import dev.quiro.sheath.compiler.codegen.CodeGenerator
-import dev.quiro.sheath.compiler.codegen.addGeneratedByComment
-import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
-import dev.quiro.sheath.compiler.codegen.findAnnotation
-import dev.quiro.sheath.compiler.codegen.fqNameOrNull
-import dev.quiro.sheath.compiler.codegen.functions
-import dev.quiro.sheath.compiler.codegen.hasAnnotation
-import dev.quiro.sheath.compiler.codegen.requireTypeName
-import dev.quiro.sheath.compiler.codegen.withJvmSuppressWildcardsIfNeeded
-import dev.quiro.sheath.compiler.codegen.writeToString
-import dev.quiro.sheath.compiler.daggerContributesAndroidInjector
-import dev.quiro.sheath.compiler.daggerModuleFqName
-import dev.quiro.sheath.compiler.generateClassName
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
@@ -29,11 +16,24 @@ import dagger.Subcomponent
 import dagger.android.AndroidInjector
 import dagger.multibindings.ClassKey
 import dagger.multibindings.IntoMap
+import dev.quiro.sheath.compiler.codegen.CodeGenerator
 import dev.quiro.sheath.compiler.codegen.PrivateCodeGenerator
+import dev.quiro.sheath.compiler.codegen.buildFile
+import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
+import dev.quiro.sheath.compiler.codegen.createGeneratedFile
 import dev.quiro.sheath.compiler.codegen.extractArrayOfClass
 import dev.quiro.sheath.compiler.codegen.extractSingleParameter
+import dev.quiro.sheath.compiler.codegen.findAnnotation
+import dev.quiro.sheath.compiler.codegen.fqNameOrNull
+import dev.quiro.sheath.compiler.codegen.functions
+import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.requireFqName
+import dev.quiro.sheath.compiler.codegen.requireTypeName
 import dev.quiro.sheath.compiler.codegen.requireTypeReference
+import dev.quiro.sheath.compiler.codegen.withJvmSuppressWildcardsIfNeeded
+import dev.quiro.sheath.compiler.daggerContributesAndroidInjector
+import dev.quiro.sheath.compiler.daggerModuleFqName
+import dev.quiro.sheath.compiler.generateClassName
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -90,93 +90,82 @@ internal class ContributesAndroidInjectorGenerator : PrivateCodeGenerator() {
         element?.fqNameOrNull(module) ?: element?.text?.let(::FqName)
       }
 
-    val content = FileSpec.builder(packageName, className)
-      .apply {
-        val classBuilder = TypeSpec.classBuilder(factoryClass)
+    val content = FileSpec.buildFile(packageName, className) {
+      val classBuilder = TypeSpec.classBuilder(factoryClass)
 
-        val subcomponentFactoryClassName = ClassName(packageName, "Factory")
-        val subcomponentFactory = TypeSpec.interfaceBuilder(subcomponentFactoryClassName)
-          .addAnnotation(Subcomponent.Factory::class.java)
-          .addSuperinterface(
-            AndroidInjector.Factory::class.asClassName().parameterizedBy(returnType)
-          )
-          .build()
-
-        val subcomponentClassName = "${bindingTargetName}Subcomponent"
-        val fullSubcomponentFactoryClassName =
-          ClassName(packageName, "$subcomponentClassName.Factory")
-        val subcomponent = TypeSpec.interfaceBuilder(ClassName(packageName, subcomponentClassName))
-          .addAnnotation(
-            AnnotationSpec.builder(Subcomponent::class.java).apply {
-              if (moduleClasses.isNotEmpty()) {
-                val builder = StringBuilder("modules = [").apply {
-                  moduleClasses.forEachIndexed { index, _ ->
-                    append("%T::class")
-                    val next = if (index == moduleClasses.lastIndex) "]" else ","
-                    append(next)
-                  }
-                }
-                addMember(builder.toString(), *moduleClasses.toTypedArray())
-              }
-            }.build()
-          )
-          .apply {
-            scopeAnnotations.forEach { annotation ->
-              addAnnotation(
-                ClassName(
-                  annotation.parent().asString(),
-                  annotation.shortName().asString()
-                )
-              )
-            }
-          }
-          .addSuperinterface(AndroidInjector::class.asClassName().parameterizedBy(returnType))
-          .addType(subcomponentFactory)
-          .build()
-
-        val fullSubcomponentClassName = ClassName.bestGuess(
-          "$packageName.$className.$subcomponentClassName"
+      val subcomponentFactoryClassName = ClassName(packageName, "Factory")
+      val subcomponentFactory = TypeSpec.interfaceBuilder(subcomponentFactoryClassName)
+        .addAnnotation(Subcomponent.Factory::class.java)
+        .addSuperinterface(
+          AndroidInjector.Factory::class.asClassName().parameterizedBy(returnType)
         )
-        classBuilder.primaryConstructor(
-          FunSpec.constructorBuilder()
-            .addModifiers(KModifier.PRIVATE)
+        .build()
+
+      val subcomponentClassName = "${bindingTargetName}Subcomponent"
+      val fullSubcomponentFactoryClassName =
+        ClassName(packageName, "$subcomponentClassName.Factory")
+      val subcomponent = TypeSpec.interfaceBuilder(ClassName(packageName, subcomponentClassName))
+        .addAnnotation(
+          AnnotationSpec.builder(Subcomponent::class.java).apply {
+            if (moduleClasses.isNotEmpty()) {
+              val builder = StringBuilder("modules = [").apply {
+                moduleClasses.forEachIndexed { index, _ ->
+                  append("%T::class")
+                  val next = if (index == moduleClasses.lastIndex) "]" else ","
+                  append(next)
+                }
+              }
+              addMember(builder.toString(), *moduleClasses.toTypedArray())
+            }
+          }.build()
+        )
+        .apply {
+          scopeAnnotations.forEach { annotation ->
+            addAnnotation(
+              ClassName(
+                annotation.parent().asString(),
+                annotation.shortName().asString()
+              )
+            )
+          }
+        }
+        .addSuperinterface(AndroidInjector::class.asClassName().parameterizedBy(returnType))
+        .addType(subcomponentFactory)
+        .build()
+
+      val fullSubcomponentClassName = ClassName.bestGuess(
+        "$packageName.$className.$subcomponentClassName"
+      )
+      classBuilder.primaryConstructor(
+        FunSpec.constructorBuilder()
+          .addModifiers(KModifier.PRIVATE)
+          .build()
+      )
+        .addAnnotation(
+          AnnotationSpec.builder(Module::class)
+            .addMember("subcomponents = [%T::class]", fullSubcomponentClassName)
             .build()
         )
-          .addAnnotation(
-            AnnotationSpec.builder(Module::class)
-              .addMember("subcomponents = [%T::class]", fullSubcomponentClassName)
-              .build()
-          )
-          .addModifiers(KModifier.ABSTRACT)
-          .addType(subcomponent)
-          .addFunction(
-            FunSpec.builder("bindAndroidInjectorFactory")
-              .addParameter(ParameterSpec("builder", fullSubcomponentFactoryClassName))
-              .addModifiers(KModifier.ABSTRACT)
-              .addAnnotation(Binds::class)
-              .addAnnotation(IntoMap::class)
-              .addAnnotation(
-                AnnotationSpec.builder(ClassKey::class)
-                  .addMember("%T::class", returnType)
-                  .build()
-              )
-              .returns(AndroidInjector.Factory::class.asClassName().parameterizedBy(STAR))
-              .build()
-          )
-          .build()
-          .let { addType(it) }
-      }
-      .build()
-      .writeToString()
-      .addGeneratedByComment()
-
-    val directory = File(codeGenDir, packageName.replace('.', File.separatorChar))
-    val file = File(directory, "$className.kt")
-    check(file.parentFile.exists() || file.parentFile.mkdirs()) {
-      "Could not generate package directory: ${file.parentFile}"
+        .addModifiers(KModifier.ABSTRACT)
+        .addType(subcomponent)
+        .addFunction(
+          FunSpec.builder("bindAndroidInjectorFactory")
+            .addParameter(ParameterSpec("builder", fullSubcomponentFactoryClassName))
+            .addModifiers(KModifier.ABSTRACT)
+            .addAnnotation(Binds::class)
+            .addAnnotation(IntoMap::class)
+            .addAnnotation(
+              AnnotationSpec.builder(ClassKey::class)
+                .addMember("%T::class", returnType)
+                .build()
+            )
+            .returns(AndroidInjector.Factory::class.asClassName().parameterizedBy(STAR))
+            .build()
+        )
+        .build()
+        .let { addType(it) }
     }
-    file.writeText(content)
 
-    return CodeGenerator.GeneratedFile(file, content)
+    return createGeneratedFile(codeGenDir, packageName, className, content)
   }
 }
