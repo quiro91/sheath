@@ -2,6 +2,12 @@
 
 ## Next Version
 
+## 0.6.0 (2021-03-13
+
+* This release upgrades Sheath to Kotlin 1.4.30. 
+* This release upgrades Dagger to 2.33.
+* Support Assisted Injection.
+
 ## 0.5.0 (2020-12-21)
 
 * Support uppercase functions with the same name of a class.
