@@ -12,9 +12,7 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.AppliedPlugin
 import org.gradle.api.plugins.PluginManager
 import org.gradle.api.provider.Provider
-import org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
-import org.jetbrains.kotlin.gradle.plugin.KaptExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
@@ -26,6 +24,7 @@ import java.io.File
 import java.util.Locale.US
 import java.util.concurrent.atomic.AtomicBoolean
 
+@Suppress("unused")
 open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
@@ -35,9 +34,9 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
   override fun getCompilerPluginId(): String = "dev.quiro.sheath.compiler"
 
   override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact(
-      groupId = GROUP,
-      artifactId = "compiler",
-      version = VERSION
+    groupId = GROUP,
+    artifactId = "compiler",
+    version = VERSION
   )
 
   override fun applyToCompilation(
@@ -49,27 +48,27 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
     // for this specific compile task will be included in the task output. The output of different
     // compile tasks shouldn't be mixed.
     val srcGenDir = File(
-        project.buildDir, "sheath${File.separator}src-gen-${kotlinCompilation.name}"
+      project.buildDir,
+      "sheath${File.separator}src-gen-${kotlinCompilation.name}"
     )
-    val extension = project.extensions.findByType(SheathExtension::class.java) ?: SheathExtension()
+    // the extension is never used, but it might be in the future
+    // val extension = project.extensions.findByType(SheathExtension::class.java) ?: SheathExtension()
 
     return project.provider {
       listOf(
-          FilesSubpluginOption(
-              key = "src-gen-dir",
-              files = listOf(srcGenDir)
-          ),
-          SubpluginOption(
-              key = "generate-dagger-factories",
-              value = "true"
-          )
+        FilesSubpluginOption(
+          key = "src-gen-dir",
+          files = listOf(srcGenDir)
+        ),
+        SubpluginOption(
+          key = "generate-dagger-factories",
+          value = "true"
+        )
       )
     }
   }
 
   override fun apply(target: Project) {
-    target.extensions.create("sheath", SheathExtension::class.java)
-
     val once = AtomicBoolean()
 
     fun PluginManager.withPluginOnce(
@@ -96,8 +95,8 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
     target.afterEvaluate {
       if (!once.get()) {
         throw GradleException(
-            "No supported plugins for Sheath found on project " +
-                "'${target.path}'. Only Android and Java modules are supported for now."
+          "No supported plugins for Sheath found on project " +
+            "'${target.path}'. Only Android and Java modules are supported for now."
         )
       }
     }
@@ -109,63 +108,56 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
   ) {
     disableIncrementalKotlinCompilation(project, isAndroidProject)
     disablePreciseJavaTracking(project)
-
-    project.pluginManager.withPlugin("org.jetbrains.kotlin.kapt") {
-      // This needs to be disabled, otherwise compiler plugins fail in weird ways when generating stubs.
-      project.extensions.findByType(KaptExtension::class.java)?.correctErrorTypes = false
-    }
   }
 
   private fun disablePreciseJavaTracking(
     project: Project
   ) {
     project.tasks
-        .withType(KotlinCompile::class.java)
-        .configureEach { compileTask ->
-          val result = CheckMixedSourceSet.preparePreciseJavaTrackingCheck(compileTask)
+      .withType(KotlinCompile::class.java)
+      .configureEach { compileTask ->
+        val result = CheckMixedSourceSet.preparePreciseJavaTrackingCheck(compileTask)
 
-          compileTask.doFirst {
-            // Disable precise java tracking if needed. Note that the doFirst() action only runs
-            // if the task is not up to date. That's ideal, because if nothing needs to be
-            // compiled, then we don't need to disable the flag.
-            //
-            // We also use the doFirst block to walk through the file system at execution time
-            // and minimize the IO at configuration time.
-            CheckMixedSourceSet.disablePreciseJavaTrackingIfNeeded(compileTask, result)
+        compileTask.doFirst {
+          // Disable precise java tracking if needed. Note that the doFirst() action only runs
+          // if the task is not up to date. That's ideal, because if nothing needs to be
+          // compiled, then we don't need to disable the flag.
+          //
+          // We also use the doFirst block to walk through the file system at execution time
+          // and minimize the IO at configuration time.
+          CheckMixedSourceSet.disablePreciseJavaTrackingIfNeeded(compileTask, result)
 
-            compileTask.logger.info(
-                "Sheath: Use precise java tracking: ${compileTask.usePreciseJavaTracking}"
-            )
-          }
+          compileTask.logger.info(
+            "Sheath: Use precise java tracking: ${compileTask.usePreciseJavaTracking}"
+          )
         }
+      }
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   private fun disableIncrementalKotlinCompilation(
     project: Project,
     isAndroidProject: Boolean
   ) {
-    project.tasks
-        .withType(KaptGenerateStubsTask::class.java)
-        .configureEach { stubsTask ->
-          // Disable incremental compilation for the stub generating task. Trigger the compiler
-          // plugin if any dependencies in the compile classpath have changed. This will make sure
-          // that we pick up any change from a dependency when merging all the classes. Without
-          // this workaround we could make changes in any library, but these changes wouldn't be
-          // contributed to the Dagger graph, because incremental compilation tricked us.
-          stubsTask.doFirst {
-            stubsTask.incremental = false
-            stubsTask.logger.info(
-                "Sheath: Incremental compilation enabled: ${stubsTask.incremental} (stub)"
-            )
-          }
-        }
-
     // Use this signal to share state between DisableIncrementalCompilationTask and the Kotlin
     // compile task. If the plugin classpath changed, then DisableIncrementalCompilationTask sets
     // the signal to false.
     @Suppress("UnstableApiUsage")
     val incrementalSignal = IncrementalSignal.registerIfAbsent(project)
+
+    if (isAndroidProject) {
+      project.androidVariantsConfigure { variant ->
+        val compileTaskName = "kaptGenerateStubs${variant.name.capitalize(US)}Kotlin"
+        disableIncrementalCompilationAction(project, incrementalSignal, compileTaskName)
+      }
+    } else {
+      disableIncrementalCompilationAction(project, incrementalSignal, "kaptGenerateStubsKotlin")
+      disableIncrementalCompilationAction(
+        project,
+        incrementalSignal,
+        "kaptGenerateStubsTestKotlin"
+      )
+    }
+
     if (isAndroidProject) {
       project.androidVariantsConfigure { variant ->
         val compileTaskName = "compile${variant.name.capitalize(US)}Kotlin"
@@ -188,11 +180,11 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
     // source files might not have changed. This workaround is necessary, otherwise
     // incremental builds are broken. See https://youtrack.jetbrains.com/issue/KT-38570
     val disableIncrementalCompilationTaskProvider = project.tasks.register(
-        compileTaskName + "CheckIncrementalCompilationSheath",
-        DisableIncrementalCompilationTask::class.java
+      compileTaskName + "CheckIncrementalCompilationSheath",
+      DisableIncrementalCompilationTask::class.java
     ) { task ->
       task.pluginClasspath.from(
-          project.configurations.getByName(PLUGIN_CLASSPATH_CONFIGURATION_NAME)
+        project.configurations.getByName(PLUGIN_CLASSPATH_CONFIGURATION_NAME)
       )
       task.incrementalSignal.set(incrementalSignal)
     }
@@ -218,7 +210,7 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
         }
 
         compileTask.logger.info(
-            "Sheath: Incremental compilation enabled: ${compileTask.incremental} (compile)"
+          "Sheath: Incremental compilation enabled: ${compileTask.incremental} (compile)"
         )
       }
     }
@@ -230,9 +222,11 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
  */
 fun Project.androidVariants(): Set<BaseVariant> {
   return when (val androidExtension = project.extensions.findByName("android")) {
-    is AppExtension -> androidExtension.applicationVariants + androidExtension.testVariants +
+    is AppExtension ->
+      androidExtension.applicationVariants + androidExtension.testVariants +
         androidExtension.unitTestVariants
-    is LibraryExtension -> androidExtension.libraryVariants + androidExtension.testVariants +
+    is LibraryExtension ->
+      androidExtension.libraryVariants + androidExtension.testVariants +
         androidExtension.unitTestVariants
     else -> throw GradleException("Unknown Android module type for project ${project.path}")
   }
@@ -259,27 +253,26 @@ fun Project.androidVariantsConfigure(action: (BaseVariant) -> Unit) {
   }
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 fun Collection<BaseVariant>.findVariantForCompileTask(
   compileTask: KotlinCompile
 ): BaseVariant = this
-    .filter { variant ->
-      compileTask.name.contains(variant.name.capitalize(US))
-    }
-    .maxBy {
-      // The filter above still returns multiple variants, e.g. for the
-      // "compileDebugUnitTestKotlin" task it returns the variants "debug" and "debugUnitTest".
-      // In this case prefer the variant with the longest matching name, because that's the more
-      // explicit variant that we want.
-      it.name.length
-    }!!
+  .filter { variant ->
+    compileTask.name.contains(variant.name.capitalize(US))
+  }
+  .maxByOrNull {
+    // The filter above still returns multiple variants, e.g. for the
+    // "compileDebugUnitTestKotlin" task it returns the variants "debug" and "debugUnitTest".
+    // In this case prefer the variant with the longest matching name, because that's the more
+    // explicit variant that we want.
+    it.name.length
+  }!!
 
 val Project.isKotlinJvmProject: Boolean
   get() = plugins.hasPlugin(KotlinPluginWrapper::class.java)
 
 val Project.isAndroidProject: Boolean
   get() = AGP_ON_CLASSPATH &&
-      (plugins.hasPlugin(AppPlugin::class.java) || plugins.hasPlugin(LibraryPlugin::class.java))
+    (plugins.hasPlugin(AppPlugin::class.java) || plugins.hasPlugin(LibraryPlugin::class.java))
 
 @Suppress("SENSELESS_COMPARISON")
 private val AGP_ON_CLASSPATH = try {

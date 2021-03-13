@@ -1,10 +1,6 @@
 package dev.quiro.sheath.compiler.dagger
 
 import com.google.common.truth.Truth.assertThat
-import dev.quiro.sheath.compiler.contributesAndroidInjector
-import dev.quiro.sheath.compiler.daggerModule1
-import dev.quiro.sheath.compiler.extends
-import dev.quiro.sheath.compiler.isAbstract
 import com.tschuchort.compiletesting.KotlinCompilation.Result
 import dagger.Binds
 import dagger.Module
@@ -12,6 +8,10 @@ import dagger.Subcomponent
 import dagger.android.AndroidInjector
 import dagger.multibindings.ClassKey
 import dagger.multibindings.IntoMap
+import dev.quiro.sheath.compiler.contributesAndroidInjector
+import dev.quiro.sheath.compiler.daggerModule1
+import dev.quiro.sheath.compiler.extends
+import dev.quiro.sheath.compiler.isAbstract
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized

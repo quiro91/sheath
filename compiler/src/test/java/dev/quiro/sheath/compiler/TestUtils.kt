@@ -18,45 +18,53 @@ internal fun compile(
   block: Result.() -> Unit = { }
 ): Result {
   return KotlinCompilation()
-      .apply {
-        compilerPlugins = listOf(SheathComponentRegistrar())
-        useIR = USE_IR
-        inheritClassPath = true
-        jvmTarget = JvmTarget.JVM_1_8.description
+    .apply {
+      compilerPlugins = listOf(SheathComponentRegistrar())
+      useIR = USE_IR
+      inheritClassPath = true
+      jvmTarget = JvmTarget.JVM_1_8.description
+      this.allWarningsAsErrors = false
 
-        if (enableDaggerAnnotationProcessor) {
-          annotationProcessors = listOf(ComponentProcessor())
-        }
-
-        if (enableDaggerAndroidAnnotationProcessor) {
-          annotationProcessors = listOf(ComponentProcessor(), AndroidProcessor())
-        }
-
-        val commandLineProcessor = SheathCommandLineProcessor()
-        commandLineProcessors = listOf(commandLineProcessor)
-
-        pluginOptions = listOf(
-            PluginOption(
-                pluginId = commandLineProcessor.pluginId,
-                optionName = srcGenDirName,
-                optionValue = File(workingDir, "build/sheath").absolutePath
-            ),
-            PluginOption(
-                pluginId = commandLineProcessor.pluginId,
-                optionName = generateDaggerFactoriesName,
-                optionValue = generateDaggerFactories.toString()
-            )
-        )
-
-        this.sources = sources.mapIndexed { index, content ->
-          val name =
-            "${workingDir.absolutePath}/sources/src/main/java/com/squareup/test/Source$index.kt"
-          File(name).parentFile.mkdirs()
-          SourceFile.kotlin(name, contents = content, trimIndent = true)
-        }
+      if (enableDaggerAnnotationProcessor) {
+        annotationProcessors = listOf(ComponentProcessor())
       }
-      .compile()
-      .also(block)
+
+      if (enableDaggerAndroidAnnotationProcessor) {
+        annotationProcessors = listOf(ComponentProcessor(), AndroidProcessor())
+      }
+
+      val commandLineProcessor = SheathCommandLineProcessor()
+      commandLineProcessors = listOf(commandLineProcessor)
+
+      pluginOptions = listOf(
+        PluginOption(
+          pluginId = commandLineProcessor.pluginId,
+          optionName = srcGenDirName,
+          optionValue = File(workingDir, "build/sheath").absolutePath
+        ),
+        PluginOption(
+          pluginId = commandLineProcessor.pluginId,
+          optionName = generateDaggerFactoriesName,
+          optionValue = generateDaggerFactories.toString()
+        )
+      )
+
+      this.sources = sources.map { content ->
+        val packageDir = content.lines()
+          .first { it.trim().startsWith("package ") }
+          .substringAfter("package ")
+          .replace('.', '/')
+
+        val name = "${workingDir.absolutePath}/sources/src/main/java/$packageDir/Source.kt"
+        with(File(name).parentFile) {
+          check(exists() || mkdirs())
+        }
+
+        SourceFile.kotlin(name, contents = content, trimIndent = true)
+      }
+    }
+    .compile()
+    .also(block)
 }
 
 internal val Result.daggerModule1: Class<*>
@@ -76,8 +84,8 @@ internal fun Class<*>.moduleFactoryClass(
   val enclosingClassString = enclosingClass?.let { "${it.simpleName}_" } ?: ""
 
   return classLoader.loadClass(
-      "${`package`.name}.$enclosingClassString$simpleName$companionString" +
-          "_${providerMethodName.capitalize(US)}Factory"
+    "${`package`.name}.$enclosingClassString$simpleName$companionString" +
+      "_${providerMethodName.capitalize(US)}Factory"
   )
 }
 
@@ -90,12 +98,31 @@ internal fun Class<*>.factoryClass(): Class<*> {
 internal fun Class<*>.membersInjector(): Class<*> {
   val enclosingClassString = enclosingClass?.let { "${it.simpleName}_" } ?: ""
 
-  return classLoader.loadClass("${`package`.name}." +
-      "$enclosingClassString${simpleName}_MembersInjector")
+  return classLoader.loadClass(
+    "${`package`.name}." +
+      "$enclosingClassString${simpleName}_MembersInjector"
+  )
+}
+
+internal fun Class<*>.implClass(): Class<*> {
+  val enclosingClassString = enclosingClass?.let { "${it.simpleName}_" } ?: ""
+
+  return classLoader.loadClass("${`package`.name}.$enclosingClassString${simpleName}_Impl")
 }
 
 internal fun Class<*>.contributesAndroidInjector(target: String): Class<*> {
   return classLoader.loadClass("${`package`.name}.DaggerModule1_$target")
+}
+
+internal val Result.assistedService: Class<*>
+  get() = classLoader.loadClass("com.squareup.test.AssistedService")
+
+internal val Result.assistedServiceFactory: Class<*>
+  get() = classLoader.loadClass("com.squareup.test.AssistedServiceFactory")
+
+internal fun Any.invokeGet(vararg args: Any?): Any {
+  val method = this::class.java.declaredMethods.single { it.name == "get" }
+  return method.invoke(this, *args)
 }
 
 internal infix fun Class<*>.extends(other: Class<*>): Boolean = other.isAssignableFrom(this)
