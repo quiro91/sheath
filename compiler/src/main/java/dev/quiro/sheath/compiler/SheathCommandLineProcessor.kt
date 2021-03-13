@@ -33,8 +33,8 @@ class SheathCommandLineProcessor : CommandLineProcessor {
       optionName = generateDaggerFactoriesName,
       valueDescription = "<true|false>",
       description = "Whether Anvil should generate Factory classes that the Dagger " +
-          "annotation processor would generate for @Provides methods and @Inject " +
-          "constructors.",
+        "annotation processor would generate for @Provides methods and @Inject " +
+        "constructors.",
       required = false,
       allowMultipleOccurrences = false
     )

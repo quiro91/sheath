@@ -1,0 +1,571 @@
+package dev.quiro.sheath.compiler.dagger
+
+import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode.COMPILATION_ERROR
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode.INTERNAL_ERROR
+import com.tschuchort.compiletesting.KotlinCompilation.Result
+import dev.quiro.sheath.compiler.assistedService
+import dev.quiro.sheath.compiler.factoryClass
+import dev.quiro.sheath.compiler.invokeGet
+import dev.quiro.sheath.compiler.isStatic
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
+import javax.inject.Provider
+
+@RunWith(Parameterized::class)
+class AssistedInjectGeneratorTest(
+  private val useDagger: Boolean
+) {
+
+  companion object {
+    @Parameters(name = "Use Dagger: {0}")
+    @JvmStatic fun useDagger(): Collection<Any> {
+      return listOf(true, false)
+    }
+  }
+
+  @Test fun `a factory class is generated with one assisted parameter`() {
+    /*
+package com.squareup.test;
+
+import javax.annotation.processing.Generated;
+import javax.inject.Provider;
+
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes"
+})
+public final class AssistedService_Factory {
+  private final Provider<Integer> integerProvider;
+
+  public AssistedService_Factory(Provider<Integer> integerProvider) {
+    this.integerProvider = integerProvider;
+  }
+
+  public AssistedService get(String string) {
+    return newInstance(integerProvider.get(), string);
+  }
+
+  public static AssistedService_Factory create(Provider<Integer> integerProvider) {
+    return new AssistedService_Factory(integerProvider);
+  }
+
+  public static AssistedService newInstance(int integer, String string) {
+    return new AssistedService(integer, string);
+  }
+}
+     */
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Int,
+        @Assisted val string: String
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, "Hello")
+
+      assertThat(factoryInstance.invokeGet("Hello")).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated without any parameter`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      class AssistedService @AssistedInject constructor() {
+        override fun equals(other: Any?): Boolean {
+          if (this === other) return true
+          if (javaClass != other?.javaClass) return false
+      
+          other as AssistedService
+      
+          return true
+        } 
+      }
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).isEmpty()
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }.invoke(null)
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }.invoke(null)
+
+      assertThat(factoryInstance.invokeGet()).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated with two assisted parameters`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Int,
+        @Assisted("one") val string1: String,
+        @Assisted("two") val string2: String
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, "Hello", "World")
+
+      assertThat(factoryInstance.invokeGet("Hello", "World")).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated with only two assisted parameters`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService @AssistedInject constructor(
+        @Assisted("one") val string1: String,
+        @Assisted("two") val string2: String
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).isEmpty()
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }.invoke(null)
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, "Hello", "World")
+
+      assertThat(factoryInstance.invokeGet("Hello", "World")).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `two identical assisted types must use an identifier`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class SomeType(val int: Int)
+      
+      data class AssistedService @AssistedInject constructor(
+        @Assisted val type1: SomeType,
+        @Assisted val type2: SomeType
+      )
+      """
+    ) {
+      assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
+      assertThat(messages).contains(
+        "@AssistedInject constructor has duplicate @Assisted type: " +
+          "@Assisted com.squareup.test.SomeType"
+      )
+    }
+  }
+
+  @Test fun `two identical assisted types must use a different identifier`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class SomeType(val int: Int)
+      
+      data class AssistedService @AssistedInject constructor(
+        @Assisted("one") val type1: SomeType,
+        @Assisted(value = "one") val type2: SomeType
+      )
+      """
+    ) {
+      assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
+      assertThat(messages).contains(
+        "@AssistedInject constructor has duplicate @Assisted type: " +
+          "@Assisted(\"one\") com.squareup.test.SomeType"
+      )
+    }
+  }
+
+  @Test fun `a factory class is generated for without an assisted parameter`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Int
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5)
+
+      assertThat(factoryInstance.invokeGet()).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated with one generic parameter`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService<T : CharSequence> @AssistedInject constructor(
+        val int: Int,
+        @Assisted val strings: List<String>
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, listOf("Hello"))
+
+      assertThat(factoryInstance.invokeGet(listOf("Hello"))).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated with two generic parameters`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService<T : CharSequence> @AssistedInject constructor(
+        val int: Int,
+        @Assisted val strings: List<String>,
+        @Assisted val ints: List<Int>
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, listOf("Hello"), listOf(1, 2))
+
+      assertThat(factoryInstance.invokeGet(listOf("Hello"), listOf(1, 2))).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated with one assisted type parameter`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService<T : CharSequence> @AssistedInject constructor(
+        val int: Int,
+        @Assisted val string: T
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, "Hello")
+
+      assertThat(factoryInstance.invokeGet("Hello")).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated with two type parameters`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService<S : Any, T : CharSequence> @AssistedInject constructor(
+        val int: S,
+        @Assisted val string: T
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, "Hello")
+
+      assertThat(factoryInstance.invokeGet("Hello")).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated for an inner class`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      class Outer {
+        data class AssistedService @AssistedInject constructor(
+          val int: Int,
+          @Assisted val string: String
+        )
+      }
+      
+      """
+    ) {
+      val factoryClass = classLoader
+        .loadClass("com.squareup.test.Outer\$AssistedService")
+        .factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { 5 })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, 5, "Hello")
+
+      assertThat(factoryInstance.invokeGet("Hello")).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `a factory class is generated for nullable parameters`() {
+    /*
+package com.squareup.test;
+
+import javax.annotation.processing.Generated;
+import javax.inject.Provider;
+
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes"
+})
+public final class AssistedService_Factory {
+  private final Provider<Integer> p0_52215Provider;
+
+  public AssistedService_Factory(Provider<Integer> p0_52215Provider) {
+    this.p0_52215Provider = p0_52215Provider;
+  }
+
+  public AssistedService get(String string) {
+    return newInstance(p0_52215Provider.get(), string);
+  }
+
+  public static AssistedService_Factory create(Provider<Integer> p0_52215Provider) {
+    return new AssistedService_Factory(p0_52215Provider);
+  }
+
+  public static AssistedService newInstance(Integer p0_52215, String string) {
+    return new AssistedService(p0_52215, string);
+  }
+}
+     */
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Int?,
+        @Assisted val string: String?
+      )
+      """
+    ) {
+      val factoryClass = assistedService.factoryClass()
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, Provider { null })
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val newInstance = staticMethods.single { it.name == "newInstance" }
+        .invoke(null, null, null)
+
+      assertThat(factoryInstance.invokeGet(null)).isEqualTo(newInstance)
+    }
+  }
+
+  @Test fun `two assisted inject constructors aren't supported`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      
+      class AssistedService @AssistedInject constructor(
+        int: Int,
+        @Assisted string: String
+      ) {
+        @AssistedInject constructor(@Assisted string: String)
+      }
+      """
+    ) {
+      // For some reason with Dagger this test throws an internal error.
+      assertThat(exitCode).isIn(listOf(COMPILATION_ERROR, INTERNAL_ERROR))
+      assertThat(messages).contains("Types may only contain one injected constructor")
+    }
+  }
+
+  @Test fun `one inject and one assisted inject constructor aren't supported`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedInject
+      import javax.inject.Inject
+      
+      class AssistedService @AssistedInject constructor(
+        int: Int,
+        @Assisted string: String
+      ) {
+        @Inject constructor(@Assisted string: String)
+      }
+      """
+    ) {
+      assertThat(exitCode).isEqualTo(COMPILATION_ERROR)
+      assertThat(messages).contains("Types may only contain one injected constructor")
+    }
+  }
+
+  @Suppress("CHANGING_ARGUMENTS_EXECUTION_ORDER_FOR_NAMED_VARARGS")
+  private fun compile(
+    vararg sources: String,
+    block: Result.() -> Unit = { }
+  ): Result = dev.quiro.sheath.compiler.compile(
+    sources = sources,
+    enableDaggerAnnotationProcessor = useDagger,
+    generateDaggerFactories = !useDagger,
+    block = block
+  )
+}

@@ -3,6 +3,8 @@ package dev.quiro.sheath.compiler
 import com.google.auto.service.AutoService
 import dev.quiro.sheath.compiler.codegen.CodeGenerationExtension
 import dev.quiro.sheath.compiler.codegen.CodeGenerator
+import dev.quiro.sheath.compiler.codegen.dagger.AssistedFactoryGenerator
+import dev.quiro.sheath.compiler.codegen.dagger.AssistedInjectGenerator
 import dev.quiro.sheath.compiler.codegen.dagger.ComponentDetectorCheck
 import dev.quiro.sheath.compiler.codegen.dagger.ContributesAndroidInjectorGenerator
 import dev.quiro.sheath.compiler.codegen.dagger.InjectConstructorFactoryGenerator
@@ -34,6 +36,8 @@ class SheathComponentRegistrar : ComponentRegistrar {
       codeGenerators += MembersInjectorGenerator()
       codeGenerators += ComponentDetectorCheck()
       codeGenerators += ContributesAndroidInjectorGenerator()
+      codeGenerators += AssistedInjectGenerator()
+      codeGenerators += AssistedFactoryGenerator()
     }
 
     // It's important to register our extension at the first position. The compiler calls each
@@ -45,11 +49,11 @@ class SheathComponentRegistrar : ComponentRegistrar {
     // take over. If we wouldn't do this and any other extension won't let our's run, then we
     // couldn't generate any code.
     AnalysisHandlerExtension.registerExtensionFirst(
-        project,
-        CodeGenerationExtension(
-            codeGenDir = sourceGenFolder,
-            codeGenerators = codeGenerators
-        )
+      project,
+      CodeGenerationExtension(
+        codeGenDir = sourceGenFolder,
+        codeGenerators = codeGenerators
+      )
     )
   }
 
@@ -58,7 +62,7 @@ class SheathComponentRegistrar : ComponentRegistrar {
     extension: AnalysisHandlerExtension
   ) {
     project.extensionArea
-        .getExtensionPoint(AnalysisHandlerExtension.extensionPointName)
-        .registerExtension(extension, LoadingOrder.FIRST, project)
+      .getExtensionPoint(AnalysisHandlerExtension.extensionPointName)
+      .registerExtension(extension, LoadingOrder.FIRST, project)
   }
 }
