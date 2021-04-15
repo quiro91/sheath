@@ -35,6 +35,7 @@ import dev.quiro.sheath.compiler.daggerModuleFqName
 import dev.quiro.sheath.compiler.daggerProvidesFqName
 import dev.quiro.sheath.compiler.generateClassName
 import dev.quiro.sheath.compiler.publishedApiFqName
+import dev.quiro.sheath.compiler.safePackageString
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.lexer.KtTokens.ABSTRACT_KEYWORD
 import org.jetbrains.kotlin.lexer.KtTokens.INTERNAL_KEYWORD
@@ -118,7 +119,7 @@ internal class ProvidesMethodFactoryGenerator : PrivateCodeGenerator() {
       declaration.visibilityModifierTypeOrDefault() == INTERNAL_KEYWORD &&
       !declaration.hasAnnotation(publishedApiFqName)
 
-    val packageName = clazz.containingKtFile.packageFqName.asString()
+    val packageName = clazz.containingKtFile.packageFqName.safePackageString()
     val className = buildString {
       append(clazz.generateClassName())
       append('_')

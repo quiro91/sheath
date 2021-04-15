@@ -8,6 +8,7 @@ import dev.quiro.sheath.compiler.getAllSuperTypes
 import dev.quiro.sheath.compiler.injectFqName
 import dev.quiro.sheath.compiler.jvmSuppressWildcardsFqName
 import dev.quiro.sheath.compiler.publishedApiFqName
+import dev.quiro.sheath.compiler.safePackageString
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ClassifierDescriptorWithTypeParameters
@@ -24,7 +25,6 @@ import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassBody
-import org.jetbrains.kotlin.psi.KtClassLiteralExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.psi.KtTypeArgumentList
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtUserType
 import org.jetbrains.kotlin.psi.KtValueArgument
-import org.jetbrains.kotlin.psi.KtValueArgumentName
 import org.jetbrains.kotlin.psi.allConstructors
 import org.jetbrains.kotlin.psi.psiUtil.parents
 import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
@@ -90,15 +89,12 @@ internal fun KtAnnotated.findAnnotation(fqName: FqName): KtAnnotationEntry? {
 
   // Look first if it's a Kotlin annotation. These annotations are usually not imported and the
   // remaining checks would fail.
-  annotationEntries.firstOrNull { annotation ->
-    kotlinAnnotations
-      .any { kotlinAnnotationFqName ->
-        val text = annotation.text
-        val matchesWithFq = fqName.shortName() == kotlinAnnotationFqName.shortName()
-        text.startsWith("@${kotlinAnnotationFqName.shortName()}") && matchesWithFq ||
-          text.startsWith("@$kotlinAnnotationFqName") && matchesWithFq
-      }
-  }?.let { return it }
+  if (fqName in kotlinAnnotations) {
+    annotationEntries.firstOrNull { annotation ->
+      val text = annotation.text
+      text.startsWith("@${fqName.shortName()}") || text.startsWith("@$fqName")
+    }?.let { return it }
+  }
 
   // Check if the fully qualified name is used, e.g. `@dagger.Module`.
   val annotationEntry = annotationEntries.firstOrNull {
@@ -128,49 +124,6 @@ internal fun KtAnnotated.findAnnotation(fqName: FqName): KtAnnotationEntry? {
   if (hasStarImport) return annotationEntryShort
 
   return null
-}
-
-private fun KtClassOrObject.findScopeClassLiteralExpression(
-  annotationFqName: FqName
-): KtClassLiteralExpression {
-  val annotationEntry = findAnnotation(annotationFqName)
-    ?: throw SheathCompilationException(
-      "Couldn't find $annotationFqName for Psi element: $text",
-      element = this
-    )
-
-  val annotationValues = annotationEntry.valueArguments
-    .asSequence()
-    .filterIsInstance<KtValueArgument>()
-
-  // First check if the is any named parameter. Named parameters allow a different order of
-  // arguments.
-  annotationValues
-    .mapNotNull { valueArgument ->
-      val children = valueArgument.children
-      if (children.size == 2 && children[0] is KtValueArgumentName &&
-        (children[0] as KtValueArgumentName).asName.asString() == "scope" &&
-        children[1] is KtClassLiteralExpression
-      ) {
-        children[1] as KtClassLiteralExpression
-      } else {
-        null
-      }
-    }
-    .firstOrNull()
-    ?.let { return it }
-
-  // If there is no named argument, then take the first argument, which must be a class literal
-  // expression, e.g. @ContributesTo(Unit::class)
-  return annotationValues
-    .firstOrNull()
-    ?.let { valueArgument ->
-      valueArgument.children.firstOrNull() as? KtClassLiteralExpression
-    }
-    ?: throw SheathCompilationException(
-      "The first argument for $annotationFqName must be a class literal: $text",
-      element = this
-    )
 }
 
 internal fun PsiElement.fqNameOrNull(
@@ -206,17 +159,25 @@ internal fun PsiElement.requireFqName(
       val isGenericType = children.any { it is KtTypeArgumentList }
       if (isGenericType) {
         // For an expression like Lazy<Abc> the qualifier will be null. If the qualifier exists,
-        // then it refers to package and the referencedName refers to the class name, e.g.
+        // then it may refer to the package and the referencedName refers to the class name, e.g.
         // a KtUserType "abc.def.GenericType<String>" has three children: a qualifier "abc.def",
         // the referencedName "GenericType" and the KtTypeArgumentList.
-        val packageName = qualifier?.text
+        val qualifierText = qualifier?.text
         val className = referencedName
 
-        if (packageName != null) {
-          return FqName("$packageName.$className")
-        }
+        if (qualifierText != null) {
 
-        className ?: failTypeHandling()
+          // The generic might be fully qualified. Try to resolve it and return early.
+          module
+            .resolveClassByFqName(FqName("$qualifierText.$className"), FROM_BACKEND)
+            ?.let { return it.fqNameSafe }
+
+          // If the name isn't fully qualified, then it's something like "Outer.Inner".
+          // We can't use `text` here because that includes the type parameter(s).
+          "$qualifierText.$className"
+        } else {
+          className ?: failTypeHandling()
+        }
       } else {
         val text = text
 
@@ -359,7 +320,7 @@ internal fun ModuleDescriptor.findClassOrTypeAlias(
   packageName: FqName,
   className: String
 ): ClassifierDescriptorWithTypeParameters? {
-  resolveClassByFqName(FqName("$packageName.$className"), FROM_BACKEND)
+  resolveClassByFqName(FqName("${packageName.safePackageString()}$className"), FROM_BACKEND)
     ?.let { return it }
 
   findTypeAliasAcrossModuleDependencies(ClassId(packageName, Name.identifier(className)))

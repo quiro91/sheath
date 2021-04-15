@@ -20,15 +20,22 @@ import dev.quiro.sheath.compiler.codegen.buildFile
 import dev.quiro.sheath.compiler.codegen.classesAndInnerClasses
 import dev.quiro.sheath.compiler.codegen.createGeneratedFile
 import dev.quiro.sheath.compiler.codegen.fqNameOrNull
+import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.injectConstructor
 import dev.quiro.sheath.compiler.codegen.mapToParameter
+import dev.quiro.sheath.compiler.daggerDoubleCheckFqNameString
 import dev.quiro.sheath.compiler.generateClassName
 import dev.quiro.sheath.compiler.injectFqName
+import dev.quiro.sheath.compiler.safePackageString
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifierTypeOrDefault
 import java.io.File
+import java.util.Locale.US
 
 internal class InjectConstructorFactoryGenerator : PrivateCodeGenerator() {
 
@@ -54,10 +61,25 @@ internal class InjectConstructorFactoryGenerator : PrivateCodeGenerator() {
     clazz: KtClassOrObject,
     constructor: KtConstructor<*>
   ): GeneratedFile {
-    val packageName = clazz.containingKtFile.packageFqName.asString()
+    val packageName = clazz.containingKtFile.packageFqName.safePackageString()
     val className = "${clazz.generateClassName()}_Factory"
 
-    val parameters = constructor.valueParameters.mapToParameter(module)
+    val memberInjectProperties = clazz.children
+      .asSequence()
+      .filterIsInstance<KtClassBody>()
+      .flatMap { it.properties.asSequence() }
+      .filterNot { it.visibilityModifierTypeOrDefault() == KtTokens.PRIVATE_KEYWORD }
+      .filter { it.hasAnnotation(injectFqName) }
+      .toList()
+
+    val parameters = constructor.valueParameters
+      .plus(memberInjectProperties)
+      .mapToParameter(module)
+
+    val constructorSize = constructor.valueParameters.size
+
+    val constructorInjectParameters = parameters.take(constructorSize)
+    val memberInjectParameters = parameters.drop(constructorSize)
 
     val typeParameters = clazz.typeParameterList
       ?.parameters
@@ -117,12 +139,36 @@ internal class InjectConstructorFactoryGenerator : PrivateCodeGenerator() {
             .addModifiers(OVERRIDE)
             .returns(classType)
             .apply {
-              val argumentList = parameters.asArgumentList(
+              val newInstanceArgumentList = constructorInjectParameters.asArgumentList(
                 asProvider = true,
                 includeModule = false
               )
 
-              addStatement("return newInstance($argumentList)")
+              if (memberInjectParameters.isEmpty()) {
+                addStatement("return newInstance($newInstanceArgumentList)")
+              } else {
+                addStatement("val instance = newInstance($newInstanceArgumentList)")
+
+                val memberInjectorClassName = "${clazz.generateClassName()}_MembersInjector"
+                val memberInjectorClass = ClassName(packageName, memberInjectorClassName)
+
+                memberInjectParameters.forEachIndexed { index, parameter ->
+
+                  val property = memberInjectProperties[index]
+                  val propertyName = property.nameAsSafeName.asString()
+                  val functionName = "inject${propertyName.capitalize(US)}"
+
+                  val param = when {
+                    parameter.isWrappedInProvider -> parameter.name
+                    parameter.isWrappedInLazy ->
+                      "$daggerDoubleCheckFqNameString.lazy(${parameter.name})"
+                    else -> parameter.name + ".get()"
+                  }
+
+                  addStatement("%T.$functionName(instance, $param)", memberInjectorClass)
+                }
+                addStatement("return instance")
+              }
             }
             .build()
         )
@@ -164,13 +210,13 @@ internal class InjectConstructorFactoryGenerator : PrivateCodeGenerator() {
                   if (typeParameters.isNotEmpty()) {
                     addTypeVariables(typeParameters)
                   }
-                  parameters.forEach { parameter ->
+                  constructorInjectParameters.forEach { parameter ->
                     addParameter(
                       name = parameter.name,
                       type = parameter.originalTypeName
                     )
                   }
-                  val argumentsWithoutModule = parameters.joinToString { it.name }
+                  val argumentsWithoutModule = constructorInjectParameters.joinToString { it.name }
 
                   addStatement("return %T($argumentsWithoutModule)", classType)
                 }

@@ -27,6 +27,7 @@ import dev.quiro.sheath.compiler.codegen.requireFqName
 import dev.quiro.sheath.compiler.daggerDoubleCheckFqNameString
 import dev.quiro.sheath.compiler.generateClassName
 import dev.quiro.sheath.compiler.injectFqName
+import dev.quiro.sheath.compiler.safePackageString
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClassBody
@@ -67,7 +68,7 @@ internal class MembersInjectorGenerator : PrivateCodeGenerator() {
     clazz: KtClassOrObject,
     injectProperties: List<KtProperty>
   ): GeneratedFile {
-    val packageName = clazz.containingKtFile.packageFqName.asString()
+    val packageName = clazz.containingKtFile.packageFqName.safePackageString()
     val className = "${clazz.generateClassName()}_MembersInjector"
     val classType = clazz.asClassName()
       .let {
