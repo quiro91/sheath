@@ -34,5 +34,5 @@
 # Installing in Maven Local
 
 ```
-./gradlew clean installArchives --no-build-cache && cd gradle-plugin && ./gradlew clean installArchives --no-build-cache && cd ..
+./gradlew clean publishToMavenLocal --no-build-cache && cd gradle-plugin && ./gradlew clean publishToMavenLocal --no-build-cache && cd ..
 ```

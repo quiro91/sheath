@@ -250,7 +250,7 @@ public final class DaggerModule1_ProvideStringFactory implements Factory<String>
   }
 
   @Test
-  fun `a factory class is generated for a provider method with imports and fully qualified return type`() { // ktlint-disable max-line-length
+  fun `a factory class is generated for a provider method with imports and fully qualified return type`() {
     /*
 package com.squareup.test;
 
@@ -757,7 +757,7 @@ public final class DaggerModule1_ProvideStringFactory implements Factory<String>
   }
 
   @Test
-  fun `a factory class is generated for an internal provider method with a mangled name in an object`() { // ktlint-disable max-line-length
+  fun `a factory class is generated for an internal provider method with a mangled name in an object`() {
     /*
 package com.squareup.test;
 
@@ -823,7 +823,7 @@ public final class DaggerModule1_ProvideString$mainFactory implements Factory<St
   }
 
   @Test
-  fun `a factory class is generated for an internal provider method with a mangled name in a companion object`() { // ktlint-disable max-line-length
+  fun `a factory class is generated for an internal provider method with a mangled name in a companion object`() {
     compile(
       """
       package com.squareup.test
@@ -856,7 +856,7 @@ public final class DaggerModule1_ProvideString$mainFactory implements Factory<St
   }
 
   @Test
-  fun `the factory does not contain the mangled name if the function is internal and uses @PublishedApi`() { // ktlint-disable max-line-length
+  fun `the factory does not contain the mangled name if the function is internal and uses @PublishedApi`() {
     compile(
       """
       package com.squareup.test
@@ -1179,7 +1179,7 @@ public final class DaggerModule1_ProvideStringFactory implements Factory<String>
   }
 
   @Test
-  fun `a factory class is generated for a provider method with a lazy parameter using a fully qualified name`() { // ktlint-disable max-line-length
+  fun `a factory class is generated for a provider method with a lazy parameter using a fully qualified name`() {
     compile(
       """
       package com.squareup.test
@@ -1903,7 +1903,7 @@ public final class ComponentInterface_InnerModule_ProvideStringFactory implement
   }
 
   @Test
-  fun `a factory class is generated for a provider method in a companion object in an inner module`() { // ktlint-disable max-line-length
+  fun `a factory class is generated for a provider method in a companion object in an inner module`() {
     /*
 package com.squareup.test;
 
@@ -2923,6 +2923,38 @@ public final class DaggerModule1_GetStringFactory implements Factory<String> {
 
       assertThat(providedType).isNotNull()
       assertThat((factoryInstance as Factory<*>).get()).isNotNull()
+    }
+  }
+
+  @Test fun `a factory class is generated for a provider method without a package`() {
+    compile(
+      """
+      @dagger.Module
+      class DaggerModule1 {
+        @dagger.Provides fun provideString(): String = "abc"
+      }
+      """
+    ) {
+      val daggerModule1 = classLoader.loadClass("DaggerModule1")
+      val factoryClass = daggerModule1.moduleFactoryClass("provideString")
+
+      val constructor = factoryClass.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(daggerModule1)
+
+      val staticMethods = factoryClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(2)
+
+      val module = daggerModule1.createInstance()
+
+      val factoryInstance = staticMethods.single { it.name == "create" }
+        .invoke(null, module)
+      assertThat(factoryInstance::class.java).isEqualTo(factoryClass)
+
+      val providedString = staticMethods.single { it.name == "provideString" }
+        .invoke(null, module) as String
+
+      assertThat(providedString).isEqualTo("abc")
+      assertThat((factoryInstance as Factory<String>).get()).isEqualTo("abc")
     }
   }
 

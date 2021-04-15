@@ -740,7 +740,7 @@ public final class AssistedServiceFactory_Impl implements AssistedServiceFactory
   }
 
   @Test
-  fun `a different order for the parameters of the factory function is allowed for parameters`() { // ktlint-disable max-line-length
+  fun `a different order for the parameters of the factory function is allowed for parameters`() {
     compile(
       """
       package com.squareup.test
@@ -789,7 +789,7 @@ public final class AssistedServiceFactory_Impl implements AssistedServiceFactory
   }
 
   @Test
-  fun `a different order for the parameters of the factory function is allowed for generic types`() { // ktlint-disable max-line-length
+  fun `a different order for the parameters of the factory function is allowed for generic types`() {
     compile(
       """
       package com.squareup.test
@@ -831,7 +831,7 @@ public final class AssistedServiceFactory_Impl implements AssistedServiceFactory
   }
 
   @Test
-  fun `a different order for the parameters of the factory function is allowed for type parameters`() { // ktlint-disable max-line-length
+  fun `a different order for the parameters of the factory function is allowed for type parameters`() {
     compile(
       """
       package com.squareup.test
@@ -914,6 +914,46 @@ public final class AssistedServiceFactory_Impl implements AssistedServiceFactory
 
       assertThat(assistedServiceInstance)
         .isEqualTo(assistedService.createInstance("World", "Hello"))
+    }
+  }
+
+  @Test fun `an implementation for a factory class is generated without a package`() {
+    compile(
+      """
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedFactory
+      import dagger.assisted.AssistedInject
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Int,
+        @Assisted val string: String
+      )
+      
+      @AssistedFactory
+      interface AssistedServiceFactory {
+        fun create(string: String): AssistedService
+      }
+      """
+    ) {
+      val factoryImplClass = classLoader.loadClass("AssistedServiceFactory").implClass()
+      val generatedFactoryInstance = classLoader.loadClass("AssistedService")
+        .factoryClass().createInstance(Provider { 5 })
+      val factoryImplInstance = factoryImplClass.createInstance(generatedFactoryInstance)
+
+      val staticMethods = factoryImplClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(1)
+
+      val factoryProvider = staticMethods.single { it.name == "create" }
+        .invoke(null, generatedFactoryInstance) as Provider<*>
+      assertThat(factoryProvider.get()::class.java).isEqualTo(factoryImplClass)
+
+      val assistedServiceInstance = factoryImplClass.declaredMethods
+        .filterNot { it.isStatic }
+        .single { it.name == "create" }
+        .invoke(factoryImplInstance, "Hello")
+
+      assertThat(assistedServiceInstance)
+        .isEqualTo(classLoader.loadClass("AssistedService").createInstance(5, "Hello"))
     }
   }
 
@@ -1110,6 +1150,138 @@ public final class AssistedServiceFactory_Impl implements AssistedServiceFactory
         .invoke(null)
 
       assertThat(assistedServiceInstance).isEqualTo(providedService)
+    }
+  }
+
+  @Test fun `assisted lazy parameters are supported`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedFactory
+      import dagger.assisted.AssistedInject
+      import dagger.Lazy
+      import dagger.Module
+      import dagger.Provides
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Lazy<Int>,
+        @Assisted val string: Lazy<String>,
+        val long: Long
+      ) {
+        override fun equals(other: Any?): Boolean {
+          if (this === other) return true
+          if (javaClass != other?.javaClass) return false
+    
+          other as AssistedService
+    
+          if (int.get() != other.int.get()) return false
+          if (string.get() != other.string.get()) return false
+          if (long != other.long) return false
+    
+          return true
+        }
+    
+        override fun hashCode(): Int {
+          var result = int.get()
+          result = 31 * result + string.get().hashCode()
+          result = 31 * result + long.hashCode()
+          return result
+        }
+      }
+      
+      @AssistedFactory
+      interface AssistedServiceFactory {
+        fun create(string: Lazy<String>): AssistedService
+      }
+      """
+    ) {
+      val factoryImplClass = assistedServiceFactory.implClass()
+      val generatedFactoryInstance = assistedService.factoryClass()
+        .createInstance(Provider { 5 }, Provider { 7L })
+      val factoryImplInstance = factoryImplClass.createInstance(generatedFactoryInstance)
+
+      val staticMethods = factoryImplClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(1)
+
+      val factoryProvider = staticMethods.single { it.name == "create" }
+        .invoke(null, generatedFactoryInstance) as Provider<*>
+      assertThat(factoryProvider.get()::class.java).isEqualTo(factoryImplClass)
+
+      val assistedServiceInstance = factoryImplClass.declaredMethods
+        .filterNot { it.isStatic }
+        .single { it.name == "create" }
+        .invoke(factoryImplInstance, dagger.Lazy { "Hello" })
+
+      assertThat(assistedServiceInstance)
+        .isEqualTo(assistedService.createInstance(dagger.Lazy { 5 }, dagger.Lazy { "Hello" }, 7L))
+    }
+  }
+
+  @Test fun `assisted provider parameters are supported`() {
+    compile(
+      """
+      package com.squareup.test
+      
+      import dagger.assisted.Assisted
+      import dagger.assisted.AssistedFactory
+      import dagger.assisted.AssistedInject
+      import dagger.Module
+      import dagger.Provides
+      import javax.inject.Provider
+      
+      data class AssistedService @AssistedInject constructor(
+        val int: Provider<Int>,
+        @Assisted val string: Provider<String>,
+        val long: Long
+      ) {
+        override fun equals(other: Any?): Boolean {
+          if (this === other) return true
+          if (javaClass != other?.javaClass) return false
+    
+          other as AssistedService
+    
+          if (int.get() != other.int.get()) return false
+          if (string.get() != other.string.get()) return false
+          if (long != other.long) return false
+    
+          return true
+        }
+    
+        override fun hashCode(): Int {
+          var result = int.get()
+          result = 31 * result + string.get().hashCode()
+          result = 31 * result + long.hashCode()
+          return result
+        }
+      }
+      
+      @AssistedFactory
+      interface AssistedServiceFactory {
+        fun create(string: Provider<String>): AssistedService
+      }
+      """
+    ) {
+      val factoryImplClass = assistedServiceFactory.implClass()
+      val generatedFactoryInstance = assistedService.factoryClass()
+        .createInstance(Provider { 5 }, Provider { 7L })
+      val factoryImplInstance = factoryImplClass.createInstance(generatedFactoryInstance)
+
+      val staticMethods = factoryImplClass.declaredMethods.filter { it.isStatic }
+      assertThat(staticMethods).hasSize(1)
+
+      val factoryProvider = staticMethods.single { it.name == "create" }
+        .invoke(null, generatedFactoryInstance) as Provider<*>
+      assertThat(factoryProvider.get()::class.java).isEqualTo(factoryImplClass)
+
+      val assistedServiceInstance = factoryImplClass.declaredMethods
+        .filterNot { it.isStatic }
+        .single { it.name == "create" }
+        .invoke(factoryImplInstance, Provider { "Hello" })
+
+      assertThat(assistedServiceInstance)
+        .isEqualTo(assistedService.createInstance(Provider { 5 }, Provider { "Hello" }, 7L))
     }
   }
 

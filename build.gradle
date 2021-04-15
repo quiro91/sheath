@@ -5,17 +5,11 @@ buildscript {
     google()
     gradlePluginPortal()
     mavenCentral()
-    jcenter()
-    maven {
-      url "https://dl.bintray.com/kotlin/kotlin-eap"
-    }
-    maven {
-      url "http://dl.bintray.com/kotlin/kotlin-dev"
-    }
   }
 
   dependencies {
     classpath deps.android_gradle_plugin
+    classpath deps.kotlin.dokka
     classpath deps.kotlin.gradle_plugin
     classpath deps.ktlint_plugin
     classpath deps.sheath_plugin
@@ -33,18 +27,19 @@ allprojects {
   repositories {
     google()
     mavenCentral()
+    // Required for publishing, Dokka needs org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2
     jcenter()
-    maven {
-      url "https://dl.bintray.com/kotlin/kotlin-eap"
-    }
-    maven {
-      url "http://dl.bintray.com/kotlin/kotlin-dev"
-    }
   }
 }
 
 subprojects {
-  apply plugin: 'org.jlleitschuh.gradle.ktlint'
+  if (buildFile.exists()) {
+    apply plugin: 'org.jlleitschuh.gradle.ktlint'
+
+    ktlint {
+      version = rootProject.ext.ktlintVersion
+    }
+  }
 
   tasks.withType(Test).configureEach {
     testLogging {
@@ -67,7 +62,7 @@ subprojects {
     kotlinOptions {
       jvmTarget = JavaVersion.VERSION_1_8
       useIR = rootProject.ext.kotlinUseIR
-      allWarningsAsErrors = rootProject.ext.ci
+      allWarningsAsErrors = rootProject.ext.allWarningsAsErrors
     }
   }
 

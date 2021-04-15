@@ -23,6 +23,7 @@ import dev.quiro.sheath.compiler.codegen.fqNameOrNull
 import dev.quiro.sheath.compiler.codegen.injectConstructor
 import dev.quiro.sheath.compiler.codegen.mapToParameter
 import dev.quiro.sheath.compiler.generateClassName
+import dev.quiro.sheath.compiler.safePackageString
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
@@ -63,7 +64,7 @@ internal class AssistedInjectGenerator : PrivateCodeGenerator() {
     clazz: KtClassOrObject,
     constructor: KtConstructor<*>
   ): GeneratedFile {
-    val packageName = clazz.containingKtFile.packageFqName.asString()
+    val packageName = clazz.containingKtFile.packageFqName.safePackageString()
     val className = "${clazz.generateClassName()}_Factory"
 
     val parameters = constructor.valueParameters.mapToParameter(module)

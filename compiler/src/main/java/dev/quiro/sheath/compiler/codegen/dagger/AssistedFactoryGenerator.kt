@@ -30,6 +30,7 @@ import dev.quiro.sheath.compiler.codegen.fqNameOrNull
 import dev.quiro.sheath.compiler.codegen.hasAnnotation
 import dev.quiro.sheath.compiler.codegen.requireClassDescriptor
 import dev.quiro.sheath.compiler.generateClassName
+import dev.quiro.sheath.compiler.safePackageString
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities.PROTECTED
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities.PUBLIC
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
@@ -167,7 +168,7 @@ internal class AssistedFactoryGenerator : PrivateCodeGenerator() {
       )
     }
 
-    val packageName = clazz.containingKtFile.packageFqName.asString()
+    val packageName = clazz.containingKtFile.packageFqName.safePackageString()
     val className = "${clazz.generateClassName()}_Impl"
     val implClass = ClassName(packageName, className)
 
