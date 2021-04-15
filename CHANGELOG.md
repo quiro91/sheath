@@ -2,7 +2,15 @@
 
 ## Next Version
 
-## 0.6.0 (2021-03-13
+## 0.6.1 (2021-04-15)
+
+* Handle inner generic classes in factories for constructor injection properly.
+* Generate a correct factory when a class has both constructor and member injection.
+* Handle Lazy assisted parameters properly in generated assisted factories.
+* Build and test Anvil with Kotlin 1.5.0-rc in CI.
+
+
+## 0.6.0 (2021-03-13)
 
 * This release upgrades Sheath to Kotlin 1.4.30. 
 * This release upgrades Dagger to 2.33.
