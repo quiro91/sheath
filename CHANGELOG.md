@@ -2,7 +2,7 @@
 
 ## Next Version
 
-## 0.6.1 (2021-04-15)
+## 0.6.2 (2021-04-15)
 
 * Handle inner generic classes in factories for constructor injection properly.
 * Generate a correct factory when a class has both constructor and member injection.
