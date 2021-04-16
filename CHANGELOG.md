@@ -2,6 +2,9 @@
 
 ## Next Version
 
+## 0.6.3 (2021-04-16)
+* Fix bug when disabling incremental compilation for kapt stub generating task
+
 ## 0.6.2 (2021-04-15)
 
 * Handle inner generic classes in factories for constructor injection properly.
