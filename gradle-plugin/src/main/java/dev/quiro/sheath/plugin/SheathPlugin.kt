@@ -12,6 +12,7 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.AppliedPlugin
 import org.gradle.api.plugins.PluginManager
 import org.gradle.api.provider.Provider
+import org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
@@ -138,26 +139,27 @@ open class SheathPlugin : KotlinCompilerPluginSupportPlugin {
     project: Project,
     isAndroidProject: Boolean
   ) {
+    project.tasks
+        .withType(KaptGenerateStubsTask::class.java)
+        .configureEach { stubsTask ->
+          // Disable incremental compilation for the stub generating task. Trigger the compiler
+          // plugin if any dependencies in the compile classpath have changed. This will make sure
+          // that we pick up any change from a dependency when merging all the classes. Without
+          // this workaround we could make changes in any library, but these changes wouldn't be
+          // contributed to the Dagger graph, because incremental compilation tricked us.
+          stubsTask.doFirst {
+            stubsTask.incremental = false
+            stubsTask.logger.info(
+                "Sheath: Incremental compilation enabled: ${stubsTask.incremental} (stub)"
+            )
+          }
+        }
+
     // Use this signal to share state between DisableIncrementalCompilationTask and the Kotlin
     // compile task. If the plugin classpath changed, then DisableIncrementalCompilationTask sets
     // the signal to false.
     @Suppress("UnstableApiUsage")
     val incrementalSignal = IncrementalSignal.registerIfAbsent(project)
-
-    if (isAndroidProject) {
-      project.androidVariantsConfigure { variant ->
-        val compileTaskName = "kaptGenerateStubs${variant.name.capitalize(US)}Kotlin"
-        disableIncrementalCompilationAction(project, incrementalSignal, compileTaskName)
-      }
-    } else {
-      disableIncrementalCompilationAction(project, incrementalSignal, "kaptGenerateStubsKotlin")
-      disableIncrementalCompilationAction(
-        project,
-        incrementalSignal,
-        "kaptGenerateStubsTestKotlin"
-      )
-    }
-
     if (isAndroidProject) {
       project.androidVariantsConfigure { variant ->
         val compileTaskName = "compile${variant.name.capitalize(US)}Kotlin"
