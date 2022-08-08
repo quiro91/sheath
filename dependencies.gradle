@@ -4,7 +4,7 @@ ext {
   ci = (System.getenv('CI') ?: 'false').toBoolean()
 
   autoServiceVersion = '1.0.1'
-  daggerVersion = '2.39.1'
+  daggerVersion = '2.34'
   espressoVersion = '3.2.0'
 
   agpVersion = project.hasProperty('square.agpVersion') ?
@@ -72,7 +72,9 @@ ext {
 
       dagger2: [
           dagger: "com.google.dagger:dagger:$daggerVersion",
-          compiler: "com.google.dagger:dagger-compiler:$daggerVersion"
+          android: "com.google.dagger:dagger-android:$daggerVersion",
+          compiler: "com.google.dagger:dagger-compiler:$daggerVersion",
+          compiler_android: "com.google.dagger:dagger-android-processor:$daggerVersion",
       ],
 
       inject: "javax.inject:javax.inject:1",

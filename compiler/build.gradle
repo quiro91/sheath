@@ -9,6 +9,7 @@ dependencies {
   implementation project(':compiler-api')
   implementation project(':compiler-utils')
   implementation deps.dagger2.dagger
+  implementation deps.dagger2.compiler_android
   implementation deps.jsr250
   implementation deps.kotlinpoet
 
@@ -19,6 +20,7 @@ dependencies {
 
   testImplementation testFixtures(project(":compiler-utils"))
   testImplementation deps.dagger2.compiler
+  testImplementation deps.dagger2.compiler_android
   testImplementation deps.kotlin.annotation_processing_embeddable
   testImplementation deps.kotlin.compile_testing
   testImplementation deps.kotlin.compiler

@@ -17,6 +17,7 @@ import dagger.MapKey
 import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
+import dagger.android.ContributesAndroidInjector
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -37,6 +38,8 @@ internal val mergeInterfacesFqName = MergeInterfaces::class.fqName
 internal val mergeModulesFqName = MergeModules::class.fqName
 internal val contributesToFqName = ContributesTo::class.fqName
 internal val contributesBindingFqName = ContributesBinding::class.fqName
+internal val daggerAndroidContributesAndroidInjector = ContributesAndroidInjector::class.fqName
+internal val daggerAndroidInjector = FqName("dagger.android.AndroidInjector")
 internal val contributesMultibindingFqName = ContributesMultibinding::class.fqName
 internal val contributesSubcomponentFqName = ContributesSubcomponent::class.fqName
 internal val contributesSubcomponentFactoryFqName = ContributesSubcomponent.Factory::class.fqName

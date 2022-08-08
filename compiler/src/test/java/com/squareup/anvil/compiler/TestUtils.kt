@@ -21,6 +21,7 @@ internal fun compile(
   @Language("kotlin") vararg sources: String,
   previousCompilationResult: Result? = null,
   enableDaggerAnnotationProcessor: Boolean = false,
+  enableDaggerAndroidAnnotationProcessor: Boolean = false,
   codeGenerators: List<CodeGenerator> = emptyList(),
   allWarningsAsErrors: Boolean = WARNINGS_AS_ERRORS,
   block: Result.() -> Unit = { }
@@ -30,6 +31,7 @@ internal fun compile(
   allWarningsAsErrors = allWarningsAsErrors,
   previousCompilationResult = previousCompilationResult,
   enableDaggerAnnotationProcessor = enableDaggerAnnotationProcessor,
+  enableDaggerAndroidAnnotationProcessor = enableDaggerAndroidAnnotationProcessor,
   codeGenerators = codeGenerators,
   block = block
 )
@@ -127,6 +129,10 @@ internal val Class<*>.hintSubcomponentParentScope: KClass<*>?
 
 internal val Class<*>.hintSubcomponentParentScopes: List<KClass<*>>
   get() = getHintScopes(HINT_SUBCOMPONENTS_PACKAGE_PREFIX)
+
+internal fun Class<*>.contributesAndroidInjector(target: String): Class<*> {
+  return classLoader.loadClass("${packageName()}DaggerModule1_$target")
+}
 
 internal val Class<*>.anvilModule: Class<*>
   get() = classLoader.loadClass(

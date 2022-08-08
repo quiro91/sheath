@@ -20,6 +20,7 @@ dependencies {
   testFixturesApi deps.kotlin.compile_testing
   testFixturesImplementation project(':compiler')
   testFixturesImplementation deps.dagger2.compiler
+  testFixturesImplementation deps.dagger2.compiler_android
   testFixturesImplementation deps.dagger2.dagger
   testFixturesImplementation deps.junit
   testFixturesImplementation deps.truth

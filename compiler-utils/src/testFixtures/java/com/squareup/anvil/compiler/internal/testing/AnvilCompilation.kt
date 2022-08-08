@@ -9,6 +9,7 @@ import com.tschuchort.compiletesting.KotlinCompilation.Result
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import dagger.android.processor.AndroidProcessor
 import dagger.internal.codegen.ComponentProcessor
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.config.JvmTarget
@@ -32,6 +33,7 @@ public class AnvilCompilation internal constructor(
   @ExperimentalAnvilApi
   public fun configureAnvil(
     enableDaggerAnnotationProcessor: Boolean = false,
+    enableDaggerAndroidAnnotationProcessor: Boolean = false,
     generateDaggerFactories: Boolean = false,
     generateDaggerFactoriesOnly: Boolean = false,
     disableComponentMerging: Boolean = false,
@@ -52,6 +54,10 @@ public class AnvilCompilation internal constructor(
       )
       if (enableDaggerAnnotationProcessor) {
         annotationProcessors = listOf(ComponentProcessor())
+      }
+
+      if (enableDaggerAndroidAnnotationProcessor) {
+        annotationProcessors = listOf(ComponentProcessor(), AndroidProcessor())
       }
 
       val anvilCommandLineProcessor = AnvilCommandLineProcessor()
@@ -217,6 +223,7 @@ public class AnvilCompilation internal constructor(
 public fun compileAnvil(
   @Language("kotlin") vararg sources: String,
   enableDaggerAnnotationProcessor: Boolean = false,
+  enableDaggerAndroidAnnotationProcessor: Boolean = false,
   generateDaggerFactories: Boolean = false,
   generateDaggerFactoriesOnly: Boolean = false,
   disableComponentMerging: Boolean = false,
@@ -245,6 +252,7 @@ public fun compileAnvil(
     }
     .configureAnvil(
       enableDaggerAnnotationProcessor = enableDaggerAnnotationProcessor,
+      enableDaggerAndroidAnnotationProcessor = enableDaggerAndroidAnnotationProcessor,
       generateDaggerFactories = generateDaggerFactories,
       generateDaggerFactoriesOnly = generateDaggerFactoriesOnly,
       disableComponentMerging = disableComponentMerging,
